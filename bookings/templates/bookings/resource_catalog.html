@@ -1,0 +1,28 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Available Campus Resources</h2>
+
+    <div class="row">
+        {% for resource in resources %}
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5>{{ resource.name }}</h5>
+                    <p>Asset Tag: {{ resource.asset_tag }}</p>
+                    <p>Category: {{ resource.category.name }}</p>
+                    <p>Location: {{ resource.location.name }}</p>
+                    <p>Condition: {{ resource.get_condition_display }}</p>
+                    <a href="{% url 'create_booking_for_resource' resource.id %}"
+                       class="btn btn-primary">Book Resource</a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <p>No resources are currently available.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

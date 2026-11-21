@@ -1,0 +1,37 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>My Bookings</h2>
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Resource</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Purpose</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for booking in bookings %}
+            <tr>
+                <td>{{ booking.resource.name }}</td>
+                <td>{{ booking.start_datetime }}</td>
+                <td>{{ booking.end_datetime }}</td>
+                <td>{{ booking.purpose }}</td>
+                <td>{{ booking.get_status_display }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">You haven't made any bookings yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{% url 'resource_catalog' %}" class="btn btn-primary">Book a Resource</a>
+</div>
+{% endblock %}

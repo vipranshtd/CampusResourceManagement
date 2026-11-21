@@ -1,0 +1,49 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Manage Booking Requests</h2>
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Resource</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Purpose</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for booking in bookings %}
+            <tr>
+                <td>{{ booking.user.username }}</td>
+                <td>{{ booking.resource.name }}</td>
+                <td>{{ booking.start_datetime }}</td>
+                <td>{{ booking.end_datetime }}</td>
+                <td>{{ booking.purpose }}</td>
+                <td>{{ booking.get_status_display }}</td>
+                <td>
+                    {% if booking.status == 'PENDING' %}
+                    <form method="POST" action="{% url 'update_booking_status' booking.id %}">
+                        {% csrf_token %}
+                        <button name="action" value="approve" class="btn btn-success btn-sm">Approve</button>
+                        <button name="action" value="reject" class="btn btn-danger btn-sm">Reject</button>
+                    </form>
+                    {% else %}
+                    No action
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7">No booking requests found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
