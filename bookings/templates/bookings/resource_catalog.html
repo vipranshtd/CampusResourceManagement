@@ -17,28 +17,61 @@
         </a>
     </div>
 
-    <div class="row g-4">
+    <!-- Search and Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-7">
+                    <label for="resourceSearch" class="form-label fw-semibold">Search Resources</label>
+                    <input
+                        type="text"
+                        id="resourceSearch"
+                        class="form-control"
+                        placeholder="Search by resource name or asset tag..."
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div class="col-md-5">
+                    <label for="categoryFilter" class="form-label fw-semibold">Filter by Category</label>
+                    <select id="categoryFilter" class="form-select">
+                        <option value="">All Categories</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <small class="text-muted" id="resultCount">
+                    {{ resources|length }} resources available
+                </small>
+                <button type="button" id="clearFilters" class="btn btn-sm btn-outline-secondary">
+                    Clear Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Cards -->
+    <div class="row g-4" id="resourceResults">
 
         {% for resource in resources %}
         <div class="col-sm-6 col-lg-4 col-xl-3">
-
             <div class="card h-100 border-0 shadow-sm resource-card">
-
                 <div class="card-body p-4">
 
                     <div class="d-flex justify-content-between align-items-start mb-3">
                         <span class="badge bg-light text-primary border">
                             {{ resource.category.name }}
                         </span>
-
                         <span class="badge bg-success-subtle text-success">
                             Available
                         </span>
                     </div>
 
-                    <h5 class="fw-bold mb-2">
-                        {{ resource.name }}
-                    </h5>
+                    <h5 class="fw-bold mb-2">{{ resource.name }}</h5>
 
                     <p class="text-muted small mb-3">
                         {{ resource.description|default:"No description available."|truncatechars:100 }}
@@ -61,19 +94,16 @@
                         <strong>{{ resource.get_condition_display }}</strong>
                     </div>
 
-                    <a href="{% url 'create_booking_for_resource' resource.id %}"
-                       class="btn btn-primary w-100">
+                    <a href="{% url 'create_booking_for_resource' resource.id %}" class="btn btn-primary w-100">
                         Request Booking →
                     </a>
 
                 </div>
             </div>
-
         </div>
 
         {% empty %}
-
-        <div class="col-12">
+        <div class="col-12" id="emptyInitial">
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center py-5">
                     <h5 class="fw-bold">No resources available</h5>
@@ -84,7 +114,6 @@
                 </div>
             </div>
         </div>
-
         {% endfor %}
 
     </div>
@@ -102,4 +131,119 @@
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.09) !important;
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('resourceSearch');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const resultsContainer = document.getElementById('resourceResults');
+    const resultCount = document.getElementById('resultCount');
+    const clearButton = document.getElementById('clearFilters');
+
+    let searchTimeout;
+
+    function createElement(tag, className, text) {
+        const element = document.createElement(tag);
+        element.className = className;
+        element.textContent = text;
+        return element;
+    }
+
+    function renderResources(resources) {
+        resultsContainer.replaceChildren();
+
+        if (resources.length === 0) {
+            const emptyColumn = createElement('div', 'col-12', '');
+            const emptyCard = createElement('div', 'card border-0 shadow-sm', '');
+            const emptyBody = createElement('div', 'card-body text-center py-5', '');
+
+            emptyBody.appendChild(createElement('h5', 'fw-bold', 'No matching resources found'));
+            emptyBody.appendChild(createElement('p', 'text-muted mb-0', 'Try changing your search or filters.'));
+
+            emptyCard.appendChild(emptyBody);
+            emptyColumn.appendChild(emptyCard);
+            resultsContainer.appendChild(emptyColumn);
+            return;
+        }
+
+        resources.forEach(function (resource) {
+            const column = createElement('div', 'col-sm-6 col-lg-4 col-xl-3', '');
+            const card = createElement('div', 'card h-100 border-0 shadow-sm resource-card', '');
+            const body = createElement('div', 'card-body p-4', '');
+
+            const top = createElement('div', 'd-flex justify-content-between align-items-start mb-3', '');
+            top.appendChild(createElement('span', 'badge bg-light text-primary border', resource.category));
+            top.appendChild(createElement('span', 'badge bg-success-subtle text-success', 'Available'));
+
+            body.appendChild(top);
+            body.appendChild(createElement('h5', 'fw-bold mb-2', resource.name));
+            body.appendChild(createElement('p', 'text-muted small mb-3', resource.description || 'No description available.'));
+            body.appendChild(createElement('hr', 'my-3', ''));
+
+            const asset = createElement('div', 'small mb-2', '');
+            asset.appendChild(createElement('span', 'text-muted', 'Asset Tag: '));
+            asset.appendChild(createElement('strong', '', resource.asset_tag));
+            body.appendChild(asset);
+
+            const location = createElement('div', 'small mb-2', '');
+            location.appendChild(createElement('span', 'text-muted', 'Location: '));
+            location.appendChild(createElement('strong', '', resource.location));
+            body.appendChild(location);
+
+            const condition = createElement('div', 'small mb-3', '');
+            condition.appendChild(createElement('span', 'text-muted', 'Condition: '));
+            condition.appendChild(createElement('strong', '', resource.condition));
+            body.appendChild(condition);
+
+            const bookingLink = createElement('a', 'btn btn-primary w-100', 'Request Booking →');
+            bookingLink.href = resource.booking_url;
+            body.appendChild(bookingLink);
+
+            card.appendChild(body);
+            column.appendChild(card);
+            resultsContainer.appendChild(column);
+        });
+    }
+
+    function loadResources() {
+        const params = new URLSearchParams({
+            q: searchInput.value.trim(),
+            category: categoryFilter.value,
+            ajax: '1'
+        });
+
+        fetch(`${window.location.pathname}?${params.toString()}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(function (response) {
+            if (!response.ok) {
+                throw new Error('Unable to load resources.');
+            }
+            return response.json();
+        })
+        .then(function (data) {
+            renderResources(data.resources);
+            resultCount.textContent = `${data.resources.length} resources available`;
+        })
+        .catch(function () {
+            resultCount.textContent = 'Unable to load resources. Please try again.';
+        });
+    }
+
+    searchInput.addEventListener('input', function () {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(loadResources, 300);
+    });
+
+    categoryFilter.addEventListener('change', loadResources);
+
+    clearButton.addEventListener('click', function () {
+        searchInput.value = '';
+        categoryFilter.value = '';
+        loadResources();
+    });
+});
+</script>
 {% endblock %}

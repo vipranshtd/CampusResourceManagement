@@ -46,28 +46,136 @@ def administrator_required(view_func):
 
 @administrator_required
 def reports_dashboard(request):
+    total_resources = Resource.objects.count()
+    total_bookings = Booking.objects.count()
+    total_maintenance = MaintenanceRecord.objects.count()
+
+    available_resources = Resource.objects.filter(status='AVAILABLE').count()
+    unavailable_resources = Resource.objects.filter(status='UNAVAILABLE').count()
+    maintenance_resources = Resource.objects.filter(status='MAINTENANCE').count()
+
+    pending_bookings = Booking.objects.filter(status='PENDING').count()
+    approved_bookings = Booking.objects.filter(status='APPROVED').count()
+    rejected_bookings = Booking.objects.filter(status='REJECTED').count()
+    issued_bookings = Booking.objects.filter(status='ISSUED').count()
+    returned_bookings = Booking.objects.filter(status='RETURNED').count()
+    cancelled_bookings = Booking.objects.filter(status='CANCELLED').count()
+
+    reported_maintenance = MaintenanceRecord.objects.filter(status='REPORTED').count()
+    in_progress_maintenance = MaintenanceRecord.objects.filter(status='IN_PROGRESS').count()
+    resolved_maintenance = MaintenanceRecord.objects.filter(status='RESOLVED').count()
+
+    def percentage(count, total):
+        return round((count / total) * 100, 1) if total else 0
+
+    resource_status_data = [
+        {
+            'name': 'Available',
+            'count': available_resources,
+            'percentage': percentage(available_resources, total_resources),
+            'color': 'success'
+        },
+        {
+            'name': 'Unavailable',
+            'count': unavailable_resources,
+            'percentage': percentage(unavailable_resources, total_resources),
+            'color': 'secondary'
+        },
+        {
+            'name': 'Under Maintenance',
+            'count': maintenance_resources,
+            'percentage': percentage(maintenance_resources, total_resources),
+            'color': 'danger'
+        },
+    ]
+
+    booking_status_data = [
+        {
+            'name': 'Pending',
+            'count': pending_bookings,
+            'percentage': percentage(pending_bookings, total_bookings),
+            'color': 'warning'
+        },
+        {
+            'name': 'Approved',
+            'count': approved_bookings,
+            'percentage': percentage(approved_bookings, total_bookings),
+            'color': 'primary'
+        },
+        {
+            'name': 'Rejected',
+            'count': rejected_bookings,
+            'percentage': percentage(rejected_bookings, total_bookings),
+            'color': 'danger'
+        },
+        {
+            'name': 'Issued',
+            'count': issued_bookings,
+            'percentage': percentage(issued_bookings, total_bookings),
+            'color': 'info'
+        },
+        {
+            'name': 'Returned',
+            'count': returned_bookings,
+            'percentage': percentage(returned_bookings, total_bookings),
+            'color': 'success'
+        },
+        {
+            'name': 'Cancelled',
+            'count': cancelled_bookings,
+            'percentage': percentage(cancelled_bookings, total_bookings),
+            'color': 'secondary'
+        },
+    ]
+
+    maintenance_status_data = [
+        {
+            'name': 'Reported',
+            'count': reported_maintenance,
+            'percentage': percentage(reported_maintenance, total_maintenance),
+            'color': 'warning'
+        },
+        {
+            'name': 'In Progress',
+            'count': in_progress_maintenance,
+            'percentage': percentage(in_progress_maintenance, total_maintenance),
+            'color': 'primary'
+        },
+        {
+            'name': 'Resolved',
+            'count': resolved_maintenance,
+            'percentage': percentage(resolved_maintenance, total_maintenance),
+            'color': 'success'
+        },
+    ]
+
     context = {
-        'total_resources': Resource.objects.count(),
-        'available_resources': Resource.objects.filter(
-            status='AVAILABLE'
-        ).count(),
-        'maintenance_resources': Resource.objects.filter(
-            status='MAINTENANCE'
-        ).count(),
-        'total_bookings': Booking.objects.count(),
-        'pending_bookings': Booking.objects.filter(
-            status='PENDING'
-        ).count(),
-        'approved_bookings': Booking.objects.filter(
-            status='APPROVED'
-        ).count(),
-        'total_maintenance': MaintenanceRecord.objects.count(),
-        'open_maintenance': MaintenanceRecord.objects.exclude(
-            status='RESOLVED'
-        ).count(),
+        'total_resources': total_resources,
+        'available_resources': available_resources,
+        'unavailable_resources': unavailable_resources,
+        'maintenance_resources': maintenance_resources,
+
+        'total_bookings': total_bookings,
+        'pending_bookings': pending_bookings,
+        'approved_bookings': approved_bookings,
+        'rejected_bookings': rejected_bookings,
+        'issued_bookings': issued_bookings,
+        'returned_bookings': returned_bookings,
+        'cancelled_bookings': cancelled_bookings,
+
+        'total_maintenance': total_maintenance,
+        'open_maintenance': reported_maintenance + in_progress_maintenance,
+        'reported_maintenance': reported_maintenance,
+        'in_progress_maintenance': in_progress_maintenance,
+        'resolved_maintenance': resolved_maintenance,
+
+        'resource_status_data': resource_status_data,
+        'booking_status_data': booking_status_data,
+        'maintenance_status_data': maintenance_status_data,
     }
 
     return render(request, 'reports/dashboard.html', context)
+
 
 
 @administrator_required

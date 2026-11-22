@@ -5,6 +5,8 @@ from .models import Booking
 from resources.models import Resource
 
 
+
+
 class BookingForm(forms.ModelForm):
     class Meta:
         model = Booking

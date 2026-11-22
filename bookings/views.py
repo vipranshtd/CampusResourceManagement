@@ -1,6 +1,7 @@
 
 from functools import wraps
-
+from django.http import JsonResponse
+from django.urls import reverse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -8,12 +9,18 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+from django.utils.dateparse import parse_datetime
+from django.views.decorators.http import require_GET
+
 
 from .models import Booking
 from .forms import BookingForm
 from resources.models import Resource
 from maintenance.models import MaintenanceRecord
 
+from django.db.models import Q
+from resources.models import Resource, Category
 
 RETURN_CONDITIONS = {
     'EXCELLENT': 'Excellent',
@@ -49,14 +56,124 @@ def can_book_resources(user):
     return has_role(user, ['STUDENT', 'FACULTY', 'ADMIN'])
 
 
+
 @login_required
 def resource_catalog(request):
     resources = Resource.objects.select_related(
         'category', 'location'
     ).filter(status='AVAILABLE')
 
+    query = request.GET.get('q', '').strip()
+    category = request.GET.get('category', '').strip()
+
+    if query:
+        resources = resources.filter(
+            Q(name__icontains=query) |
+            Q(asset_tag__icontains=query)
+        )
+
+    if category.isdigit():
+        resources = resources.filter(category_id=int(category))
+
+    if request.GET.get('ajax') == '1':
+        resource_data = []
+
+        for resource in resources:
+            resource_data.append({
+                'id': resource.id,
+                'name': resource.name,
+                'category': resource.category.name,
+                'description': resource.description[:100],
+                'asset_tag': resource.asset_tag,
+                'location': resource.location.name,
+                'condition': resource.get_condition_display(),
+                'booking_url': reverse(
+                    'create_booking_for_resource',
+                    args=[resource.id]
+                ),
+            })
+
+        return JsonResponse({'resources': resource_data})
+
     return render(request, 'bookings/resource_catalog.html', {
-        'resources': resources
+        'resources': resources,
+        'categories': Category.objects.all(),
+    })
+
+
+@role_required(can_book_resources)
+@require_GET
+def check_booking_availability(request):
+    resource_id = request.GET.get('resource')
+    start_value = request.GET.get('start_datetime')
+    end_value = request.GET.get('end_datetime')
+
+    if not resource_id or not start_value or not end_value:
+        return JsonResponse({
+            'available': False,
+            'message': 'Select a resource, start time and end time.'
+        })
+
+    if not resource_id.isdigit():
+        return JsonResponse({
+            'available': False,
+            'message': 'Invalid resource selected.'
+        })
+
+    start = parse_datetime(start_value)
+    end = parse_datetime(end_value)
+
+    if not start or not end:
+        return JsonResponse({
+            'available': False,
+            'message': 'Please enter valid date and time values.'
+        })
+
+    if timezone.is_naive(start):
+        start = timezone.make_aware(start)
+
+    if timezone.is_naive(end):
+        end = timezone.make_aware(end)
+
+    if start <= timezone.now():
+        return JsonResponse({
+            'available': False,
+            'message': 'Booking start time must be in the future.'
+        })
+
+    if end <= start:
+        return JsonResponse({
+            'available': False,
+            'message': 'End time must be after start time.'
+        })
+
+    try:
+        resource = Resource.objects.get(
+            pk=resource_id,
+            status='AVAILABLE'
+        )
+    except Resource.DoesNotExist:
+        return JsonResponse({
+            'available': False,
+            'message': 'This resource is currently unavailable.'
+        })
+
+    conflicts = Booking.objects.filter(
+        resource=resource,
+        start_datetime__lt=end,
+        end_datetime__gt=start,
+        status__in=['PENDING', 'APPROVED', 'ISSUED']
+    )
+
+    if conflicts.exists():
+        return JsonResponse({
+            'available': False,
+            'message': 'This resource is already booked during the selected time.'
+        })
+
+    return JsonResponse({
+        'available': True,
+        'message': 'Great! This resource is available for the selected time.'
     })
 
 

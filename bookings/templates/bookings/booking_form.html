@@ -20,7 +20,7 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-4">
 
-                    <form method="POST">
+                    <form method="POST" id="bookingForm">
                         {% csrf_token %}
 
                         {% if form.non_field_errors %}
@@ -63,6 +63,8 @@
                             </div>
                         </div>
 
+                        <div id="availabilityMessage" class="mb-4" aria-live="polite"></div>
+
                         <div class="mb-4">
                             <label for="{{ form.purpose.id_for_label }}" class="form-label fw-semibold">
                                 Purpose of Booking
@@ -79,7 +81,7 @@
                         </div>
 
                         <div class="d-flex flex-wrap gap-2">
-                            <button type="submit" class="btn btn-primary px-4">
+                            <button type="submit" id="submitBooking" class="btn btn-primary px-4" disabled>
                                 Submit Booking Request
                             </button>
 
@@ -96,4 +98,145 @@
     </div>
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const resource = document.getElementById('{{ form.resource.id_for_label }}');
+    const start = document.getElementById('{{ form.start_datetime.id_for_label }}');
+    const end = document.getElementById('{{ form.end_datetime.id_for_label }}');
+    const message = document.getElementById('availabilityMessage');
+    const submitButton = document.getElementById('submitBooking');
+    const bookingForm = document.getElementById('bookingForm');
+
+    let debounceTimer;
+    let requestController;
+    let checkVersion = 0;
+    let availabilityConfirmed = false;
+
+    function showMessage(type, text) {
+        message.replaceChildren();
+
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} mb-0`;
+        alert.textContent = text;
+
+        message.appendChild(alert);
+    }
+
+    function resetAvailability(text) {
+        availabilityConfirmed = false;
+        submitButton.disabled = true;
+
+        if (requestController) {
+            requestController.abort();
+            requestController = null;
+        }
+
+        checkVersion++;
+
+        if (text) {
+            showMessage('secondary', text);
+        } else {
+            message.replaceChildren();
+        }
+    }
+
+    function checkAvailability() {
+        const resourceId = resource.value;
+        const startValue = start.value;
+        const endValue = end.value;
+
+        resetAvailability();
+
+        if (!resourceId || !startValue || !endValue) {
+            return;
+        }
+
+        if (new Date(startValue) <= new Date()) {
+            showMessage('danger', 'Booking start time must be in the future.');
+            return;
+        }
+
+        if (new Date(endValue) <= new Date(startValue)) {
+            showMessage('danger', 'End time must be after start time.');
+            return;
+        }
+
+        const currentVersion = checkVersion;
+
+        showMessage('info', 'Checking resource availability...');
+
+        requestController = new AbortController();
+
+        const params = new URLSearchParams({
+            resource: resourceId,
+            start_datetime: startValue,
+            end_datetime: endValue
+        });
+
+        fetch("{% url 'check_booking_availability' %}?" + params.toString(), {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            signal: requestController.signal
+        })
+        .then(function (response) {
+            if (!response.ok) {
+                throw new Error('Availability check failed.');
+            }
+
+            return response.json();
+        })
+        .then(function (data) {
+            if (currentVersion !== checkVersion) {
+                return;
+            }
+
+            showMessage(
+                data.available ? 'success' : 'danger',
+                data.message
+            );
+
+            availabilityConfirmed = data.available;
+            submitButton.disabled = !data.available;
+        })
+        .catch(function (error) {
+            if (error.name === 'AbortError') {
+                return;
+            }
+
+            if (currentVersion === checkVersion) {
+                resetAvailability('Unable to check availability. Please try again.');
+            }
+        });
+    }
+
+    function scheduleCheck() {
+        clearTimeout(debounceTimer);
+        resetAvailability();
+
+        if (resource.value && start.value && end.value) {
+            showMessage('secondary', 'Waiting to check availability...');
+            debounceTimer = setTimeout(checkAvailability, 400);
+        }
+    }
+
+    resource.addEventListener('change', scheduleCheck);
+    start.addEventListener('change', scheduleCheck);
+    end.addEventListener('change', scheduleCheck);
+
+    bookingForm.addEventListener('submit', function (event) {
+        if (!availabilityConfirmed) {
+            event.preventDefault();
+            showMessage('danger', 'Please wait for a successful availability check before submitting.');
+        }
+    });
+
+    // Automatically check when the form is reloaded with previously entered values.
+    if (resource.value && start.value && end.value) {
+        scheduleCheck();
+    }
+});
+</script>
 {% endblock %}
