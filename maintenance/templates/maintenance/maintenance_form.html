@@ -1,0 +1,35 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h2>Report Maintenance Issue</h2>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        {{ form.non_field_errors }}
+
+        {% for field in form %}
+        <div class="mb-3">
+            <label class="form-label">{{ field.label }}</label>
+            {{ field }}
+
+            <div class="text-danger">
+                {{ field.errors }}
+            </div>
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="btn btn-success">
+            Submit Report
+        </button>
+
+        <a href="{% url 'maintenance_list' %}" class="btn btn-secondary">
+            Cancel
+        </a>
+    </form>
+
+</div>
+{% endblock %}
