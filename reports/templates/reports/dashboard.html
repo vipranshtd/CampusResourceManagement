@@ -1,0 +1,82 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h2 class="mb-4">Reports and Analytics</h2>
+
+    <div class="row g-3">
+
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                <h6>Total Resources</h6>
+                <h2>{{ total_resources }}</h2>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                <h6>Available Resources</h6>
+                <h2 class="text-success">{{ available_resources }}</h2>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                <h6>Under Maintenance</h6>
+                <h2 class="text-danger">{{ maintenance_resources }}</h2>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                <h6>Total Bookings</h6>
+                <h2>{{ total_bookings }}</h2>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                <h6>Pending Bookings</h6>
+                <h2 class="text-warning">{{ pending_bookings }}</h2>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                <h6>Approved Bookings</h6>
+                <h2 class="text-success">{{ approved_bookings }}</h2>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                <h6>Total Maintenance</h6>
+                <h2>{{ total_maintenance }}</h2>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                <h6>Open Maintenance</h6>
+                <h2 class="text-danger">{{ open_maintenance }}</h2>
+            </div>
+        </div>
+
+    </div>
+
+    <hr class="my-4">
+
+    <h4>Download Reports</h4>
+
+    <a href="{% url 'export_bookings_csv' %}" class="btn btn-success me-2">
+        Download Booking CSV
+    </a>
+
+    <a href="{% url 'export_summary_pdf' %}" class="btn btn-danger">
+        Download Summary PDF
+    </a>
+
+</div>
+{% endblock %}
