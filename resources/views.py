@@ -1,6 +1,8 @@
 
+from functools import wraps
+
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
@@ -18,8 +20,19 @@ def can_manage_resources(user):
     )
 
 
-@login_required
-@user_passes_test(can_manage_resources)
+def resource_manager_required(view_func):
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not can_manage_resources(request.user):
+            raise PermissionDenied
+
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
+
+
+@resource_manager_required
 def resource_list(request):
     resources = Resource.objects.select_related(
         'category', 'location'
@@ -56,8 +69,7 @@ def resource_list(request):
     return render(request, 'resources/resource_list.html', context)
 
 
-@login_required
-@user_passes_test(can_manage_resources)
+@resource_manager_required
 def resource_create(request):
     form = ResourceForm(request.POST or None)
 
@@ -77,8 +89,7 @@ def resource_create(request):
     })
 
 
-@login_required
-@user_passes_test(can_manage_resources)
+@resource_manager_required
 def resource_update(request, pk):
     resource = get_object_or_404(Resource, pk=pk)
     form = ResourceForm(request.POST or None, instance=resource)
@@ -99,8 +110,7 @@ def resource_update(request, pk):
     })
 
 
-@login_required
-@user_passes_test(can_manage_resources)
+@resource_manager_required
 @require_POST
 def resource_delete(request, pk):
     resource = get_object_or_404(Resource, pk=pk)
@@ -108,6 +118,7 @@ def resource_delete(request, pk):
 
     try:
         resource.delete()
+
         messages.success(
             request,
             f'{resource_name} has been deleted successfully.'

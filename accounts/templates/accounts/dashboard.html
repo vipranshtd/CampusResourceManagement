@@ -3,127 +3,320 @@
 
 {% block content %}
 
-<div class="container py-4">
+<div class="container-fluid py-4">
 
+    <!-- Welcome Header -->
     <div class="p-4 p-md-5 mb-4 rounded-4 text-white"
-         style="background: linear-gradient(120deg, #123c69, #2563eb);">
-        <h1 class="fw-bold">
-            Welcome, {{ request.user.first_name|default:request.user.username }}!
-        </h1>
-        <p class="lead mb-3">
-            Welcome to your Campus Resource Management dashboard.
-        </p>
-        <a href="{% url 'resource_catalog' %}"
-           class="btn btn-light btn-lg">
-            Explore Resources
-        </a>
+         style="background:linear-gradient(120deg,#123c69,#2563eb);">
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+
+            <div>
+                <span class="badge bg-light text-primary mb-3">
+                    {{ role_display }}
+                </span>
+
+                <h1 class="fw-bold mb-2">
+                    Welcome, {{ request.user.first_name|default:request.user.username }}!
+                </h1>
+
+                <p class="lead mb-0">
+                    {% if is_student %}
+                        Browse campus resources and manage your bookings.
+                    {% elif is_faculty %}
+                        Access campus facilities and track your resource requests.
+                    {% elif is_staff_member %}
+                        Manage campus resources, bookings and maintenance operations.
+                    {% elif is_admin_role %}
+                        Oversee campus resources, users and system operations.
+                    {% endif %}
+                </p>
+            </div>
+
+            {% if is_student or is_faculty %}
+                <a href="{% url 'resource_catalog' %}" class="btn btn-light px-4">
+                    Explore Resources →
+                </a>
+            {% endif %}
+
+        </div>
+    </div>
+
+
+    <!-- Student and Faculty Dashboard -->
+    {% if is_student or is_faculty %}
+
+    <div class="mb-4">
+        <h4 class="fw-bold">Campus Resources</h4>
+        <p class="text-muted">Explore and use campus facilities.</p>
     </div>
 
     <div class="row g-4">
 
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm border-0">
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-4">
                     <div class="fs-2 mb-3">📦</div>
                     <h5 class="fw-bold">Browse Resources</h5>
-                    <p class="text-secondary">
-                        Explore campus equipment, facilities and their availability.
+                    <p class="text-muted">
+                        Explore equipment, facilities and available campus resources.
                     </p>
-                    <a href="{% url 'resource_catalog' %}"
-                       class="btn btn-outline-primary">Browse Resources</a>
+                    <a href="{% url 'resource_catalog' %}" class="btn btn-outline-primary">
+                        Browse Resources
+                    </a>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm border-0">
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-4">
                     <div class="fs-2 mb-3">📅</div>
                     <h5 class="fw-bold">My Bookings</h5>
-                    <p class="text-secondary">
-                        View your booking requests and track their status.
+                    <p class="text-muted">
+                        Submit booking requests and track approval, issue and return status.
                     </p>
-                    <a href="{% url 'my_bookings' %}"
-                       class="btn btn-outline-primary">View Bookings</a>
+                    <a href="{% url 'my_bookings' %}" class="btn btn-outline-primary">
+                        View My Bookings
+                    </a>
                 </div>
             </div>
         </div>
 
-        {% if request.user.is_superuser or request.user.profile.role == 'STAFF' or request.user.profile.role == 'ADMIN' %}
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body p-4">
-                    <div class="fs-2 mb-3">🗂️</div>
-                    <h5 class="fw-bold">Manage Bookings</h5>
-                    <p class="text-secondary">
-                        Review booking requests and approve or reject them.
-                    </p>
-                    <a href="{% url 'manage_bookings' %}"
-                       class="btn btn-outline-primary">Manage Bookings</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm border-0">
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-4">
                     <div class="fs-2 mb-3">🔧</div>
-                    <h5 class="fw-bold">Maintenance</h5>
-                    <p class="text-secondary">
-                        Report equipment issues and monitor repairs.
+                    <h5 class="fw-bold">Report an Issue</h5>
+                    <p class="text-muted">
+                        Report damaged or malfunctioning campus resources and track your reports.
                     </p>
-                    <a href="{% url 'maintenance_list' %}"
-                       class="btn btn-outline-primary">Manage Maintenance</a>
+                    <a href="{% url 'report_maintenance' %}" class="btn btn-outline-primary">
+                        Report Issue
+                    </a>
+                    <a href="{% url 'maintenance_list' %}" class="btn btn-outline-secondary mt-2">
+                        My Reports
+                    </a>
                 </div>
             </div>
         </div>
-
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body p-4">
-                    <div class="fs-2 mb-3">📊</div>
-                    <h5 class="fw-bold">Reports & Analytics</h5>
-                    <p class="text-secondary">
-                        View resource statistics and download reports.
-                    </p>
-                    <a href="{% url 'reports_dashboard' %}"
-                       class="btn btn-outline-primary">View Reports</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body p-4">
-                    <div class="fs-2 mb-3">🖥️</div>
-                    <h5 class="fw-bold">Resource Management</h5>
-                    <p class="text-secondary">
-                        Add, update and manage campus resources.
-                    </p>
-                    <a href="{% url 'resource_list' %}"
-                       class="btn btn-outline-primary">Manage Resources</a>
-                </div>
-            </div>
-        </div>
-        {% endif %}
 
     </div>
 
+    {% endif %}
+
+
+    <!-- Resource Staff Dashboard -->
+    {% if is_staff_member %}
+
+    <div class="mb-4">
+        <h4 class="fw-bold">Staff Operations</h4>
+        <p class="text-muted">Manage everyday campus resource operations.</p>
+    </div>
+
+    <div class="row g-4">
+
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="fs-2 mb-3">🖥️</div>
+                    <h5 class="fw-bold">Resource Management</h5>
+                    <p class="text-muted">
+                        Add, edit and manage campus equipment and facilities.
+                    </p>
+                    <a href="{% url 'resource_list' %}" class="btn btn-outline-primary">
+                        Manage Resources
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="fs-2 mb-3">📋</div>
+                    <h5 class="fw-bold">Manage Bookings</h5>
+                    <p class="text-muted">
+                        Review booking requests, approve or reject them, and manage issue and return.
+                    </p>
+                    <a href="{% url 'manage_bookings' %}" class="btn btn-outline-primary">
+                        Manage Bookings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="fs-2 mb-3">🔧</div>
+                    <h5 class="fw-bold">Maintenance Management</h5>
+                    <p class="text-muted">
+                        Track reported issues and manage repair progress.
+                    </p>
+                    <a href="{% url 'maintenance_list' %}" class="btn btn-outline-primary">
+                        Manage Maintenance
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- Administrator Dashboard -->
+    {% if is_admin_role %}
+
+    <div class="mb-4">
+        <h4 class="fw-bold">Administration</h4>
+        <p class="text-muted">Monitor and manage the complete campus resource system.</p>
+    </div>
+
+    <div class="row g-4">
+
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="fs-2 mb-3">👥</div>
+                    <h5 class="fw-bold">User Management</h5>
+                    <p class="text-muted">
+                        Manage students, faculty, resource staff and administrator accounts.
+                    </p>
+                    <a href="{% url 'admin:auth_user_changelist' %}" class="btn btn-outline-primary">
+                        Manage Users
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="fs-2 mb-3">🖥️</div>
+                    <h5 class="fw-bold">Resource Management</h5>
+                    <p class="text-muted">
+                        Manage campus resources, categories, locations and availability.
+                    </p>
+                    <a href="{% url 'resource_list' %}" class="btn btn-outline-primary">
+                        Manage Resources
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="fs-2 mb-3">📋</div>
+                    <h5 class="fw-bold">Booking Management</h5>
+                    <p class="text-muted">
+                        Monitor requests and manage resource issuing and returns.
+                    </p>
+                    <a href="{% url 'manage_bookings' %}" class="btn btn-outline-primary">
+                        Manage Bookings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="fs-2 mb-3">🔧</div>
+                    <h5 class="fw-bold">Maintenance</h5>
+                    <p class="text-muted">
+                        Monitor reported issues and maintenance operations.
+                    </p>
+                    <a href="{% url 'maintenance_list' %}" class="btn btn-outline-primary">
+                        Manage Maintenance
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="fs-2 mb-3">📊</div>
+                    <h5 class="fw-bold">Reports & Analytics</h5>
+                    <p class="text-muted">
+                        Review utilization statistics and generate reports.
+                    </p>
+                    <a href="{% url 'reports_dashboard' %}" class="btn btn-outline-primary">
+                        View Reports
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="fs-2 mb-3">⚙️</div>
+                    <h5 class="fw-bold">Django Admin</h5>
+                    <p class="text-muted">
+                        Access administrative controls and manage system records.
+                    </p>
+                    <a href="{% url 'admin:index' %}" class="btn btn-outline-primary">
+                        Open Admin Panel
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- Account Information -->
     <div class="card border-0 shadow-sm mt-4">
         <div class="card-body p-4">
+
             <h5 class="fw-bold mb-3">Account Information</h5>
-            <p><strong>Username:</strong> {{ request.user.username }}</p>
-            <p><strong>Email:</strong> {{ request.user.email }}</p>
-            <p class="mb-0">
-                <strong>Role:</strong>
-                {% if request.user.is_superuser %}
-                    Administrator
-                {% elif request.user.profile %}
-                    {{ request.user.profile.get_role_display }}
-                {% else %}
-                    Not assigned
-                {% endif %}
-            </p>
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+                    <div class="text-muted small">Username</div>
+                    <div class="fw-semibold">{{ request.user.username }}</div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="text-muted small">Email Address</div>
+                    <div class="fw-semibold">{{ request.user.email }}</div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="text-muted small">Account Role</div>
+                    <div class="fw-semibold">{{ role_display }}</div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="text-muted small">Department</div>
+                    <div class="fw-semibold">
+                        {{ profile.department|default:"Not provided" }}
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="text-muted small">Institutional ID</div>
+                    <div class="fw-semibold">
+                        {{ profile.institutional_id|default:"Not provided" }}
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="text-muted small">Phone</div>
+                    <div class="fw-semibold">
+                        {{ profile.phone|default:"Not provided" }}
+                    </div>
+                </div>
+
+            </div>
+
         </div>
     </div>
 

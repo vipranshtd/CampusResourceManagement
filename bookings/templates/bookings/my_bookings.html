@@ -17,7 +17,6 @@
 
     <div class="card border-0 shadow-sm">
         <div class="card-body">
-
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
@@ -27,6 +26,7 @@
                             <th>Purpose</th>
                             <th>Status</th>
                             <th>Issue / Return Details</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
 
@@ -92,11 +92,28 @@
                                     <span class="text-muted small">No issue or return recorded yet</span>
                                 {% endif %}
                             </td>
+
+                            <td>
+                                {% if booking.status == 'PENDING' or booking.status == 'APPROVED' %}
+                                    {% if booking.start_datetime > now %}
+                                    <form method="POST" action="{% url 'cancel_booking' booking.id %}" onsubmit="return confirm('Are you sure you want to cancel this booking?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            Cancel
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <small class="text-muted">Cancellation unavailable</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
                         </tr>
 
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center py-5">
+                            <td colspan="6" class="text-center py-5">
                                 <h5 class="fw-semibold">No bookings yet</h5>
                                 <p class="text-muted">You haven't requested any campus resources.</p>
                                 <a href="{% url 'resource_catalog' %}" class="btn btn-primary">
@@ -108,9 +125,7 @@
                     </tbody>
                 </table>
             </div>
-
         </div>
     </div>
-
 </div>
 {% endblock %}

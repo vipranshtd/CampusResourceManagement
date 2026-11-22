@@ -2,66 +2,189 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid py-4">
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Maintenance Management</h2>
-        <a href="{% url 'report_maintenance' %}" class="btn btn-primary">
-            Report New Issue
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                {% if can_manage %}
+                    Maintenance Management
+                {% else %}
+                    My Reported Issues
+                {% endif %}
+            </h2>
+
+            <p class="text-muted mb-0">
+                {% if can_manage %}
+                    Track reported issues and manage campus resource maintenance.
+                {% else %}
+                    Track the progress of maintenance issues you have reported.
+                {% endif %}
+            </p>
+        </div>
+
+        <a href="{% url 'report_maintenance' %}" class="btn btn-primary px-4">
+            + Report New Issue
         </a>
     </div>
 
-    <table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>Resource</th>
-                <th>Reported By</th>
-                <th>Issue Description</th>
-                <th>Reported At</th>
-                <th>Status</th>
-                <th>Action</th>
-            </tr>
-        </thead>
+    <div class="card border-0 shadow-sm">
 
-        <tbody>
-            {% for record in records %}
-            <tr>
-                <td>{{ record.resource.name }}</td>
-                <td>{{ record.reported_by.username }}</td>
-                <td>{{ record.issue_description }}</td>
-                <td>{{ record.reported_at }}</td>
-                <td>{{ record.get_status_display }}</td>
+        <div class="card-header bg-white border-0 p-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0">Maintenance Records</h5>
+                <span class="text-muted small">
+                    {{ records|length }} record(s)
+                </span>
+            </div>
+        </div>
 
-                <td>
-                    {% if record.status != 'RESOLVED' %}
-                    <form method="POST"
-                          action="{% url 'update_maintenance_status' record.id %}">
-                        {% csrf_token %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
 
-                        <select name="status" class="form-select mb-2">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Resource</th>
+
+                        {% if can_manage %}
+                            <th>Reported By</th>
+                        {% endif %}
+
+                        <th>Issue Description</th>
+                        <th>Reported At</th>
+                        <th>Status</th>
+
+                        {% if can_manage %}
+                            <th>Action</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for record in records %}
+                    <tr>
+
+                        <td class="ps-4">
+                            <div class="fw-semibold">
+                                {{ record.resource.name }}
+                            </div>
+                            <small class="text-muted">
+                                {{ record.resource.asset_tag }}
+                            </small>
+                        </td>
+
+                        {% if can_manage %}
+                            <td>
+                                {% if record.reported_by %}
+                                    {{ record.reported_by.username }}
+                                {% else %}
+                                    <span class="text-muted">Unknown</span>
+                                {% endif %}
+                            </td>
+                        {% endif %}
+
+                        <td>
+                            <div style="min-width:180px; max-width:300px;">
+                                {{ record.issue_description|truncatechars:120 }}
+                            </div>
+                        </td>
+
+                        <td>
+                            <span class="small">
+                                {{ record.reported_at|date:"d M Y" }}
+                            </span>
+                            <div class="text-muted small">
+                                {{ record.reported_at|date:"h:i A" }}
+                            </div>
+                        </td>
+
+                        <td>
                             {% if record.status == 'REPORTED' %}
-                            <option value="IN_PROGRESS">In Progress</option>
+                                <span class="badge bg-warning-subtle text-warning-emphasis">
+                                    Reported
+                                </span>
+                            {% elif record.status == 'IN_PROGRESS' %}
+                                <span class="badge bg-primary-subtle text-primary">
+                                    In Progress
+                                </span>
+                            {% elif record.status == 'RESOLVED' %}
+                                <span class="badge bg-success-subtle text-success">
+                                    Resolved
+                                </span>
                             {% endif %}
-                            <option value="RESOLVED">Resolved</option>
-                        </select>
 
-                        <button type="submit" class="btn btn-success btn-sm">
-                            Update
-                        </button>
-                    </form>
-                    {% else %}
-                    <span class="text-success">Completed</span>
-                    {% endif %}
-                </td>
-            </tr>
+                            {% if record.resolved_at %}
+                                <div class="text-muted small mt-1">
+                                    {{ record.resolved_at|date:"d M Y" }}
+                                </div>
+                            {% endif %}
+                        </td>
 
-            {% empty %}
-            <tr>
-                <td colspan="6">No maintenance records found.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                        {% if can_manage %}
+                        <td>
+                            {% if record.status != 'RESOLVED' %}
+
+                                <form method="POST"
+                                      action="{% url 'update_maintenance_status' record.id %}">
+                                    {% csrf_token %}
+
+                                    <div class="d-flex flex-column gap-2" style="min-width:140px;">
+
+                                        <select name="status" class="form-select form-select-sm">
+                                            {% if record.status == 'REPORTED' %}
+                                                <option value="IN_PROGRESS">In Progress</option>
+                                            {% endif %}
+                                            <option value="RESOLVED">Resolved</option>
+                                        </select>
+
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            Update Status
+                                        </button>
+
+                                    </div>
+                                </form>
+
+                            {% else %}
+                                <span class="text-success small fw-semibold">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    Completed
+                                </span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+
+                    </tr>
+
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if can_manage %}6{% else %}4{% endif %}"
+                            class="text-center py-5">
+
+                            <h5 class="fw-semibold">No maintenance records found</h5>
+
+                            <p class="text-muted mb-3">
+                                {% if can_manage %}
+                                    No resource issues have been reported yet.
+                                {% else %}
+                                    You haven't reported any resource issues yet.
+                                {% endif %}
+                            </p>
+
+                            <a href="{% url 'report_maintenance' %}"
+                               class="btn btn-primary">
+                                Report an Issue
+                            </a>
+
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                </tbody>
+            </table>
+        </div>
+
+    </div>
 
 </div>
 {% endblock %}

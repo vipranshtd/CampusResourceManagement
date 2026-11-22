@@ -16,7 +16,6 @@
 
     <div class="card border-0 shadow-sm">
         <div class="card-body">
-
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
@@ -36,7 +35,7 @@
                             <td>
                                 <div class="fw-semibold">{{ booking.user.get_full_name|default:booking.user.username }}</div>
                                 <small class="text-muted">{{ booking.user.username }}</small>
-                                {% if booking.user.profile.role %}
+                                {% if booking.user.profile %}
                                 <div><small class="text-muted">{{ booking.user.profile.get_role_display }}</small></div>
                                 {% endif %}
                             </td>
@@ -99,14 +98,14 @@
                                 <form method="POST" action="{% url 'update_booking_status' booking.id %}">
                                     {% csrf_token %}
                                     <div class="mb-2">
-                                        <input
-                                            type="text"
-                                            name="return_condition"
-                                            class="form-control form-control-sm"
-                                            placeholder="Enter return condition"
-                                            maxlength="100"
-                                            required
-                                        >
+                                        <label class="form-label small fw-semibold">Returned Resource Condition</label>
+                                        <select name="return_condition" class="form-select form-select-sm" required>
+                                            <option value="">Select condition</option>
+                                            <option value="EXCELLENT">Excellent</option>
+                                            <option value="GOOD">Good</option>
+                                            <option value="FAIR">Fair</option>
+                                            <option value="DAMAGED">Damaged</option>
+                                        </select>
                                     </div>
                                     <button type="submit" name="action" value="return" class="btn btn-success btn-sm">
                                         Record Return
@@ -141,9 +140,7 @@
                     </tbody>
                 </table>
             </div>
-
         </div>
     </div>
-
 </div>
 {% endblock %}

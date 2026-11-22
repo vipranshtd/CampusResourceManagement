@@ -1,6 +1,6 @@
 
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, logout
+from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_POST
@@ -24,40 +24,52 @@ def register(request):
                 Profile.objects.create(
                     user=user,
                     role='STUDENT',
-                    enrollment_number=form.cleaned_data['enrollment_number']
+                    institutional_id=form.cleaned_data['institutional_id']
                 )
 
             messages.success(
                 request,
                 "Registration successful. Please log in."
             )
+
             return redirect('login')
 
     else:
         form = RegistrationForm()
 
-    return render(request, 'accounts/register.html', {'form': form})
+    return render(request, 'accounts/register.html', {
+        'form': form
+    })
 
 
 @login_required
 def dashboard(request):
     profile, created = Profile.objects.get_or_create(
         user=request.user,
-        defaults={'role': 'STUDENT'}
+        defaults={
+            'role': 'ADMIN' if request.user.is_superuser else 'STUDENT'
+        }
     )
+
+    if request.user.is_superuser:
+        effective_role = 'ADMIN'
+        role_display = 'Administrator'
+    else:
+        effective_role = profile.role
+        role_display = profile.get_role_display()
 
     context = {
         'profile': profile,
-        'user_role': profile.role,
-        'role_display': profile.get_role_display(),
-        'is_student': profile.role == 'STUDENT',
-        'is_faculty': profile.role == 'FACULTY',
-        'is_staff_member': profile.role == 'STAFF',
-        'is_admin_role': profile.role == 'ADMIN' or request.user.is_superuser,
-        'can_manage': (
-            profile.role in ['STAFF', 'ADMIN']
-            or request.user.is_superuser
-        ),
+        'user_role': effective_role,
+        'role_display': role_display,
+
+        'is_student': effective_role == 'STUDENT',
+        'is_faculty': effective_role == 'FACULTY',
+        'is_staff_member': effective_role == 'STAFF',
+
+        'is_admin_role': effective_role == 'ADMIN',
+
+        'can_manage': effective_role in ['STAFF', 'ADMIN'],
     }
 
     return render(request, 'accounts/dashboard.html', context)

@@ -1,9 +1,11 @@
 
 import csv
 from io import BytesIO
+from functools import wraps
 
 from django.shortcuts import render
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.utils import timezone
 
@@ -11,7 +13,13 @@ from bookings.models import Booking
 from resources.models import Resource
 from maintenance.models import MaintenanceRecord
 
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle
+)
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import A4
@@ -20,38 +28,61 @@ from reportlab.lib.pagesizes import A4
 def can_view_reports(user):
     return user.is_superuser or (
         hasattr(user, 'profile') and
-        user.profile.role in ['STAFF', 'ADMIN']
+        user.profile.role == 'ADMIN'
     )
 
 
-@login_required
-@user_passes_test(can_view_reports)
+def administrator_required(view_func):
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not can_view_reports(request.user):
+            raise PermissionDenied
+
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
+
+
+@administrator_required
 def reports_dashboard(request):
     context = {
         'total_resources': Resource.objects.count(),
-        'available_resources': Resource.objects.filter(status='AVAILABLE').count(),
-        'maintenance_resources': Resource.objects.filter(status='MAINTENANCE').count(),
+        'available_resources': Resource.objects.filter(
+            status='AVAILABLE'
+        ).count(),
+        'maintenance_resources': Resource.objects.filter(
+            status='MAINTENANCE'
+        ).count(),
         'total_bookings': Booking.objects.count(),
-        'pending_bookings': Booking.objects.filter(status='PENDING').count(),
-        'approved_bookings': Booking.objects.filter(status='APPROVED').count(),
+        'pending_bookings': Booking.objects.filter(
+            status='PENDING'
+        ).count(),
+        'approved_bookings': Booking.objects.filter(
+            status='APPROVED'
+        ).count(),
         'total_maintenance': MaintenanceRecord.objects.count(),
-        'open_maintenance': MaintenanceRecord.objects.exclude(status='RESOLVED').count(),
+        'open_maintenance': MaintenanceRecord.objects.exclude(
+            status='RESOLVED'
+        ).count(),
     }
 
     return render(request, 'reports/dashboard.html', context)
 
 
-@login_required
-@user_passes_test(can_view_reports)
+@administrator_required
 def export_bookings_csv(request):
     bookings = Booking.objects.select_related(
         'user', 'resource'
     ).all()
 
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="booking_report.csv"'
+    response['Content-Disposition'] = (
+        'attachment; filename="booking_report.csv"'
+    )
 
     writer = csv.writer(response)
+
     writer.writerow([
         'Username',
         'Resource',
@@ -74,15 +105,11 @@ def export_bookings_csv(request):
     return response
 
 
-@login_required
-@user_passes_test(can_view_reports)
+@administrator_required
 def export_summary_pdf(request):
     buffer = BytesIO()
 
-    document = SimpleDocTemplate(
-        buffer,
-        pagesize=A4
-    )
+    document = SimpleDocTemplate(buffer, pagesize=A4)
 
     styles = getSampleStyleSheet()
     elements = []
@@ -124,14 +151,15 @@ def export_summary_pdf(request):
     ]))
 
     elements.append(table)
-
     document.build(elements)
 
     pdf = buffer.getvalue()
     buffer.close()
 
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="campus_resource_report.pdf"'
+    response['Content-Disposition'] = (
+        'attachment; filename="campus_resource_report.pdf"'
+    )
     response.write(pdf)
 
     return response

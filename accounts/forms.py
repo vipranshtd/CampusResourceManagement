@@ -1,4 +1,3 @@
-
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
@@ -6,10 +5,16 @@ from .models import Profile
 
 
 class RegistrationForm(UserCreationForm):
+
     email = forms.EmailField(required=True)
     first_name = forms.CharField(max_length=150, required=True)
     last_name = forms.CharField(max_length=150, required=True)
-    enrollment_number = forms.CharField(max_length=20, required=True)
+
+    institutional_id = forms.CharField(
+        max_length=30,
+        required=True,
+        label='Enrollment Number'
+    )
 
     class Meta:
         model = User
@@ -30,7 +35,7 @@ class RegistrationForm(UserCreationForm):
 
         self.fields['username'].help_text = 'Choose a unique username.'
         self.fields['email'].help_text = 'Use your JIIT college email address.'
-        self.fields['enrollment_number'].help_text = 'Enter your unique enrollment number.'
+        self.fields['institutional_id'].help_text = 'Enter your JIIT enrollment number.'
 
     def clean_email(self):
         email = self.cleaned_data['email'].strip().lower()
@@ -47,12 +52,14 @@ class RegistrationForm(UserCreationForm):
 
         return email
 
-    def clean_enrollment_number(self):
-        enrollment = self.cleaned_data['enrollment_number'].strip()
+    def clean_institutional_id(self):
+        institutional_id = self.cleaned_data['institutional_id'].strip()
 
-        if Profile.objects.filter(enrollment_number__iexact=enrollment).exists():
+        if Profile.objects.filter(
+            institutional_id__iexact=institutional_id
+        ).exists():
             raise forms.ValidationError(
-                "This enrollment number is already registered."
+                "This institutional ID is already registered."
             )
 
-        return enrollment
+        return institutional_id
