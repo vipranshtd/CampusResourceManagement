@@ -2,48 +2,148 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Manage Booking Requests</h2>
+<div class="container-fluid py-4">
 
-    <table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>User</th>
-                <th>Resource</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Purpose</th>
-                <th>Status</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for booking in bookings %}
-            <tr>
-                <td>{{ booking.user.username }}</td>
-                <td>{{ booking.resource.name }}</td>
-                <td>{{ booking.start_datetime }}</td>
-                <td>{{ booking.end_datetime }}</td>
-                <td>{{ booking.purpose }}</td>
-                <td>{{ booking.get_status_display }}</td>
-                <td>
-                    {% if booking.status == 'PENDING' %}
-                    <form method="POST" action="{% url 'update_booking_status' booking.id %}">
-                        {% csrf_token %}
-                        <button name="action" value="approve" class="btn btn-success btn-sm">Approve</button>
-                        <button name="action" value="reject" class="btn btn-danger btn-sm">Reject</button>
-                    </form>
-                    {% else %}
-                    No action
-                    {% endif %}
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="7">No booking requests found.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Booking Management</h2>
+            <p class="text-muted mb-0">Review requests, issue resources and manage returns.</p>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-primary">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>User</th>
+                            <th>Resource</th>
+                            <th>Booking Period</th>
+                            <th>Purpose</th>
+                            <th>Status</th>
+                            <th style="min-width: 230px;">Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for booking in bookings %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">{{ booking.user.get_full_name|default:booking.user.username }}</div>
+                                <small class="text-muted">{{ booking.user.username }}</small>
+                                {% if booking.user.profile.role %}
+                                <div><small class="text-muted">{{ booking.user.profile.get_role_display }}</small></div>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <div class="fw-semibold">{{ booking.resource.name }}</div>
+                                <small class="text-muted">{{ booking.resource.asset_tag }}</small>
+                            </td>
+
+                            <td>
+                                <div>{{ booking.start_datetime|date:"d M Y, h:i A" }}</div>
+                                <small class="text-muted">to {{ booking.end_datetime|date:"d M Y, h:i A" }}</small>
+                            </td>
+
+                            <td>{{ booking.purpose|truncatechars:70 }}</td>
+
+                            <td>
+                                {% if booking.status == 'PENDING' %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                {% elif booking.status == 'APPROVED' %}
+                                    <span class="badge bg-primary">Approved</span>
+                                {% elif booking.status == 'REJECTED' %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                {% elif booking.status == 'ISSUED' %}
+                                    <span class="badge bg-info text-dark">Issued</span>
+                                {% elif booking.status == 'RETURNED' %}
+                                    <span class="badge bg-success">Returned</span>
+                                {% elif booking.status == 'CANCELLED' %}
+                                    <span class="badge bg-secondary">Cancelled</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if booking.status == 'PENDING' %}
+                                <div class="d-flex flex-wrap gap-2">
+                                    <form method="POST" action="{% url 'update_booking_status' booking.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" name="action" value="approve" class="btn btn-success btn-sm">
+                                            Approve
+                                        </button>
+                                    </form>
+
+                                    <form method="POST" action="{% url 'update_booking_status' booking.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" name="action" value="reject" class="btn btn-outline-danger btn-sm">
+                                            Reject
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {% elif booking.status == 'APPROVED' %}
+                                <form method="POST" action="{% url 'update_booking_status' booking.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" name="action" value="issue" class="btn btn-primary btn-sm">
+                                        Mark as Issued
+                                    </button>
+                                </form>
+
+                                {% elif booking.status == 'ISSUED' %}
+                                <form method="POST" action="{% url 'update_booking_status' booking.id %}">
+                                    {% csrf_token %}
+                                    <div class="mb-2">
+                                        <input
+                                            type="text"
+                                            name="return_condition"
+                                            class="form-control form-control-sm"
+                                            placeholder="Enter return condition"
+                                            maxlength="100"
+                                            required
+                                        >
+                                    </div>
+                                    <button type="submit" name="action" value="return" class="btn btn-success btn-sm">
+                                        Record Return
+                                    </button>
+                                </form>
+
+                                {% elif booking.status == 'RETURNED' %}
+                                <small class="text-success fw-semibold">Return completed</small>
+                                {% if booking.return_condition %}
+                                <div class="small text-muted mt-1">
+                                    Condition: {{ booking.return_condition }}
+                                </div>
+                                {% endif %}
+
+                                {% elif booking.status == 'REJECTED' %}
+                                <small class="text-muted">Request rejected</small>
+
+                                {% elif booking.status == 'CANCELLED' %}
+                                <small class="text-muted">Request cancelled</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <h5>No booking requests found</h5>
+                                <p class="mb-0">New booking requests will appear here.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 {% endblock %}

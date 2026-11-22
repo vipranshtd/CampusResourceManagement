@@ -2,36 +2,115 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>My Bookings</h2>
+<div class="container-fluid py-4">
 
-    <table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>Resource</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Purpose</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for booking in bookings %}
-            <tr>
-                <td>{{ booking.resource.name }}</td>
-                <td>{{ booking.start_datetime }}</td>
-                <td>{{ booking.end_datetime }}</td>
-                <td>{{ booking.purpose }}</td>
-                <td>{{ booking.get_status_display }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="5">You haven't made any bookings yet.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">My Bookings</h2>
+            <p class="text-muted mb-0">Track your resource requests, approvals, issues and returns.</p>
+        </div>
 
-    <a href="{% url 'resource_catalog' %}" class="btn btn-primary">Book a Resource</a>
+        <a href="{% url 'resource_catalog' %}" class="btn btn-primary">
+            + Book a Resource
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Resource</th>
+                            <th>Booking Period</th>
+                            <th>Purpose</th>
+                            <th>Status</th>
+                            <th>Issue / Return Details</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for booking in bookings %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">{{ booking.resource.name }}</div>
+                                <small class="text-muted">{{ booking.resource.asset_tag }}</small>
+                                <div class="small text-muted">
+                                    {{ booking.resource.location.name }}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div>{{ booking.start_datetime|date:"d M Y, h:i A" }}</div>
+                                <small class="text-muted">
+                                    to {{ booking.end_datetime|date:"d M Y, h:i A" }}
+                                </small>
+                            </td>
+
+                            <td>{{ booking.purpose|truncatechars:90 }}</td>
+
+                            <td>
+                                {% if booking.status == 'PENDING' %}
+                                    <span class="badge bg-warning text-dark">Pending Approval</span>
+                                {% elif booking.status == 'APPROVED' %}
+                                    <span class="badge bg-primary">Approved</span>
+                                {% elif booking.status == 'REJECTED' %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                {% elif booking.status == 'ISSUED' %}
+                                    <span class="badge bg-info text-dark">Issued</span>
+                                {% elif booking.status == 'RETURNED' %}
+                                    <span class="badge bg-success">Returned</span>
+                                {% elif booking.status == 'CANCELLED' %}
+                                    <span class="badge bg-secondary">Cancelled</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if booking.issued_at %}
+                                    <div class="small">
+                                        <strong>Issued:</strong>
+                                        {{ booking.issued_at|date:"d M Y, h:i A" }}
+                                    </div>
+                                {% endif %}
+
+                                {% if booking.returned_at %}
+                                    <div class="small mt-1">
+                                        <strong>Returned:</strong>
+                                        {{ booking.returned_at|date:"d M Y, h:i A" }}
+                                    </div>
+                                {% endif %}
+
+                                {% if booking.return_condition %}
+                                    <div class="small text-muted mt-1">
+                                        <strong>Return condition:</strong>
+                                        {{ booking.return_condition }}
+                                    </div>
+                                {% endif %}
+
+                                {% if not booking.issued_at and not booking.returned_at %}
+                                    <span class="text-muted small">No issue or return recorded yet</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5">
+                                <h5 class="fw-semibold">No bookings yet</h5>
+                                <p class="text-muted">You haven't requested any campus resources.</p>
+                                <a href="{% url 'resource_catalog' %}" class="btn btn-primary">
+                                    Browse Resources
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 {% endblock %}

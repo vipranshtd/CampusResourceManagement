@@ -2,27 +2,104 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Available Campus Resources</h2>
+<div class="container-fluid py-4">
 
-    <div class="row">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Campus Resource Catalog</h2>
+            <p class="text-muted mb-0">
+                Browse available equipment and facilities across the campus.
+            </p>
+        </div>
+
+        <a href="{% url 'my_bookings' %}" class="btn btn-outline-primary">
+            My Bookings
+        </a>
+    </div>
+
+    <div class="row g-4">
+
         {% for resource in resources %}
-        <div class="col-md-4 mb-3">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5>{{ resource.name }}</h5>
-                    <p>Asset Tag: {{ resource.asset_tag }}</p>
-                    <p>Category: {{ resource.category.name }}</p>
-                    <p>Location: {{ resource.location.name }}</p>
-                    <p>Condition: {{ resource.get_condition_display }}</p>
+        <div class="col-sm-6 col-lg-4 col-xl-3">
+
+            <div class="card h-100 border-0 shadow-sm resource-card">
+
+                <div class="card-body p-4">
+
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <span class="badge bg-light text-primary border">
+                            {{ resource.category.name }}
+                        </span>
+
+                        <span class="badge bg-success-subtle text-success">
+                            Available
+                        </span>
+                    </div>
+
+                    <h5 class="fw-bold mb-2">
+                        {{ resource.name }}
+                    </h5>
+
+                    <p class="text-muted small mb-3">
+                        {{ resource.description|default:"No description available."|truncatechars:100 }}
+                    </p>
+
+                    <hr class="my-3">
+
+                    <div class="small mb-2">
+                        <span class="text-muted">Asset Tag:</span>
+                        <strong>{{ resource.asset_tag }}</strong>
+                    </div>
+
+                    <div class="small mb-2">
+                        <span class="text-muted">Location:</span>
+                        <strong>{{ resource.location.name }}</strong>
+                    </div>
+
+                    <div class="small mb-3">
+                        <span class="text-muted">Condition:</span>
+                        <strong>{{ resource.get_condition_display }}</strong>
+                    </div>
+
                     <a href="{% url 'create_booking_for_resource' resource.id %}"
-                       class="btn btn-primary">Book Resource</a>
+                       class="btn btn-primary w-100">
+                        Request Booking →
+                    </a>
+
+                </div>
+            </div>
+
+        </div>
+
+        {% empty %}
+
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center py-5">
+                    <h5 class="fw-bold">No resources available</h5>
+                    <p class="text-muted mb-0">
+                        There are currently no resources available for booking.
+                        Please check again later.
+                    </p>
                 </div>
             </div>
         </div>
-        {% empty %}
-        <p>No resources are currently available.</p>
+
         {% endfor %}
+
     </div>
+
 </div>
+
+<style>
+    .resource-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-radius: 12px;
+    }
+
+    .resource-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.09) !important;
+    }
+</style>
 {% endblock %}

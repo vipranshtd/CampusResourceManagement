@@ -3,8 +3,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Q
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .models import Booking
 from .forms import BookingForm
@@ -44,15 +44,26 @@ def create_booking(request, resource_id=None):
         booking = form.save(commit=False)
         booking.user = request.user
 
-        if booking.resource.status != 'AVAILABLE':
-            form.add_error('resource', 'This resource is not available.')
-        else:
-            with transaction.atomic():
-                conflicts = Booking.objects.select_for_update().filter(
-                    resource=booking.resource,
+        with transaction.atomic():
+            try:
+                resource = Resource.objects.select_for_update().get(
+                    pk=booking.resource_id,
+                    status='AVAILABLE'
+                )
+            except Resource.DoesNotExist:
+                form.add_error(
+                    'resource',
+                    'This resource is not available.'
+                )
+            else:
+                booking.resource = resource
+
+                conflicts = Booking.objects.filter(
+                    resource=resource,
                     start_datetime__lt=booking.end_datetime,
-                    end_datetime__gt=booking.start_datetime
-                ).exclude(status__in=['REJECTED', 'CANCELLED'])
+                    end_datetime__gt=booking.start_datetime,
+                    status__in=['PENDING', 'APPROVED', 'ISSUED']
+                )
 
                 if conflicts.exists():
                     form.add_error(
@@ -61,7 +72,10 @@ def create_booking(request, resource_id=None):
                     )
                 else:
                     booking.save()
-                    messages.success(request, 'Booking request submitted.')
+                    messages.success(
+                        request,
+                        'Booking request submitted successfully.'
+                    )
                     return redirect('my_bookings')
 
     return render(request, 'bookings/booking_form.html', {
@@ -72,7 +86,10 @@ def create_booking(request, resource_id=None):
 @login_required
 def my_bookings(request):
     bookings = Booking.objects.select_related(
-        'resource', 'resource__category', 'resource__location'
+        'resource',
+        'resource__category',
+        'resource__location',
+        'reviewed_by'
     ).filter(user=request.user)
 
     return render(request, 'bookings/my_bookings.html', {
@@ -84,7 +101,9 @@ def my_bookings(request):
 @user_passes_test(can_manage_bookings)
 def manage_bookings(request):
     bookings = Booking.objects.select_related(
-        'user', 'resource'
+        'user',
+        'resource',
+        'reviewed_by'
     ).all()
 
     return render(request, 'bookings/manage_bookings.html', {
@@ -94,36 +113,101 @@ def manage_bookings(request):
 
 @login_required
 @user_passes_test(can_manage_bookings)
+@require_POST
 def update_booking_status(request, booking_id):
-    booking = get_object_or_404(Booking, pk=booking_id)
+    action = request.POST.get('action')
+    booking = get_object_or_404(
+        Booking.objects.select_related('resource'),
+        pk=booking_id
+    )
 
-    if request.method == 'POST':
-        action = request.POST.get('action')
+    if action == 'approve':
+        if booking.status != 'PENDING':
+            messages.error(request, 'This booking cannot be approved.')
+            return redirect('manage_bookings')
 
-        if action == 'approve' and booking.status == 'PENDING':
-            with transaction.atomic():
-                conflicts = Booking.objects.select_for_update().filter(
-                    resource=booking.resource,
-                    start_datetime__lt=booking.end_datetime,
-                    end_datetime__gt=booking.start_datetime,
-                    status__in=['APPROVED', 'ISSUED']
-                ).exclude(pk=booking.pk)
+        with transaction.atomic():
+            Resource.objects.select_for_update().get(
+                pk=booking.resource_id
+            )
 
-                if conflicts.exists():
-                    messages.error(
-                        request,
-                        'Cannot approve: another booking occupies this slot.'
-                    )
-                else:
-                    booking.status = 'APPROVED'
-                    booking.reviewed_by = request.user
-                    booking.save()
-                    messages.success(request, 'Booking approved.')
+            conflicts = Booking.objects.filter(
+                resource=booking.resource,
+                start_datetime__lt=booking.end_datetime,
+                end_datetime__gt=booking.start_datetime,
+                status__in=['APPROVED', 'ISSUED']
+            ).exclude(pk=booking.pk)
 
-        elif action == 'reject' and booking.status == 'PENDING':
+            if conflicts.exists():
+                messages.error(
+                    request,
+                    'Cannot approve: another approved booking occupies this slot.'
+                )
+            else:
+                booking.status = 'APPROVED'
+                booking.reviewed_by = request.user
+                booking.save(update_fields=['status', 'reviewed_by'])
+                messages.success(request, 'Booking approved successfully.')
+
+    elif action == 'reject':
+        if booking.status != 'PENDING':
+            messages.error(request, 'Only pending bookings can be rejected.')
+        else:
             booking.status = 'REJECTED'
             booking.reviewed_by = request.user
-            booking.save()
+            booking.save(update_fields=['status', 'reviewed_by'])
             messages.success(request, 'Booking rejected.')
+
+    elif action == 'issue':
+        if booking.status != 'APPROVED':
+            messages.error(
+                request,
+                'Only approved bookings can be marked as issued.'
+            )
+        else:
+            booking.status = 'ISSUED'
+            booking.issued_at = timezone.now()
+            booking.reviewed_by = request.user
+            booking.save(
+                update_fields=['status', 'issued_at', 'reviewed_by']
+            )
+            messages.success(request, 'Resource marked as issued.')
+
+    elif action == 'return':
+        if booking.status != 'ISSUED':
+            messages.error(
+                request,
+                'Only issued resources can be marked as returned.'
+            )
+        else:
+            return_condition = request.POST.get(
+                'return_condition', ''
+            ).strip()
+
+            if not return_condition:
+                messages.error(
+                    request,
+                    'Please enter the condition of the returned resource.'
+                )
+            else:
+                booking.status = 'RETURNED'
+                booking.returned_at = timezone.now()
+                booking.return_condition = return_condition
+                booking.reviewed_by = request.user
+                booking.save(
+                    update_fields=[
+                        'status',
+                        'returned_at',
+                        'return_condition',
+                        'reviewed_by'
+                    ]
+                )
+                messages.success(
+                    request,
+                    'Resource return recorded successfully.'
+                )
+
+    else:
+        messages.error(request, 'Invalid booking action.')
 
     return redirect('manage_bookings')

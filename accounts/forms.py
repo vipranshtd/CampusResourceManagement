@@ -1,7 +1,9 @@
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from .models import Profile
+
 
 class RegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True)
@@ -11,28 +13,46 @@ class RegistrationForm(UserCreationForm):
 
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'email', 'password1', 'password2']
+        fields = [
+            'username',
+            'first_name',
+            'last_name',
+            'email',
+            'password1',
+            'password2'
+        ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'
-    
+
+        self.fields['username'].help_text = 'Choose a unique username.'
+        self.fields['email'].help_text = 'Use your JIIT college email address.'
+        self.fields['enrollment_number'].help_text = 'Enter your unique enrollment number.'
+
     def clean_email(self):
         email = self.cleaned_data['email'].strip().lower()
 
         if not email.endswith('@mail.jiit.ac.in'):
-            raise forms.ValidationError("Only JIIT college email addresses are allowed.")
+            raise forms.ValidationError(
+                "Only JIIT college email addresses are allowed."
+            )
 
         if User.objects.filter(email__iexact=email).exists():
-            raise forms.ValidationError("This email is already registered.")
+            raise forms.ValidationError(
+                "This email is already registered."
+            )
 
         return email
 
     def clean_enrollment_number(self):
         enrollment = self.cleaned_data['enrollment_number'].strip()
 
-        if Profile.objects.filter(enrollment_number=enrollment).exists():
-            raise forms.ValidationError("This enrollment number is already registered.")
+        if Profile.objects.filter(enrollment_number__iexact=enrollment).exists():
+            raise forms.ValidationError(
+                "This enrollment number is already registered."
+            )
 
         return enrollment

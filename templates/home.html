@@ -1,0 +1,84 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="bg-dark text-white rounded-4 p-5 mb-5">
+    <h1 class="display-4 fw-bold">
+        Campus Resource Management
+    </h1>
+
+    <p class="lead mt-3">
+        A centralized platform to discover, request and manage
+        campus facilities and resources efficiently.
+    </p>
+
+    <a href="{% url 'resource_catalog' %}"
+       class="btn btn-primary btn-lg mt-3">
+        Explore Resources
+    </a>
+
+    {% if not user.is_authenticated %}
+    <a href="{% url 'login' %}"
+       class="btn btn-outline-light btn-lg mt-3">
+        Login
+    </a>
+    {% else %}
+    <a href="{% url 'my_bookings' %}"
+       class="btn btn-outline-light btn-lg mt-3">
+        My Bookings
+    </a>
+    {% endif %}
+</section>
+
+<h2 class="text-center mb-4">Our Features</h2>
+
+<div class="row g-4">
+
+    <div class="col-md-3">
+        <div class="card h-100 p-3">
+            <div class="card-body">
+                <h5>Resource Booking</h5>
+                <p>Browse and request campus equipment and facilities.</p>
+                <a href="{% url 'resource_catalog' %}"
+                   class="btn btn-outline-primary">Explore</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card h-100 p-3">
+            <div class="card-body">
+                <h5>Booking Tracking</h5>
+                <p>Track booking requests and approval status.</p>
+                <a href="{% url 'my_bookings' %}"
+                   class="btn btn-outline-primary">View Bookings</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card h-100 p-3">
+            <div class="card-body">
+                <h5>Maintenance</h5>
+                <p>Report equipment problems and track repairs.</p>
+                <a href="{% url 'maintenance_list' %}"
+                   class="btn btn-outline-primary">Maintenance</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card h-100 p-3">
+            <div class="card-body">
+                <h5>Reports</h5>
+                <p>View resource statistics and download reports.</p>
+                <a href="{% url 'reports_dashboard' %}"
+                   class="btn btn-outline-primary">View Reports</a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
