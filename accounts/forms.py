@@ -1,3 +1,4 @@
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
@@ -13,7 +14,17 @@ class RegistrationForm(UserCreationForm):
     institutional_id = forms.CharField(
         max_length=30,
         required=True,
-        label='Enrollment Number'
+        label='Enrollment / Employee ID'
+    )
+
+    requested_role = forms.ChoiceField(
+        choices=[
+            ('STUDENT', 'Student'),
+            ('FACULTY', 'Faculty'),
+            ('STAFF', 'Resource Staff'),
+        ],
+        required=True,
+        label='Registering as'
     )
 
     class Meta:
@@ -23,6 +34,8 @@ class RegistrationForm(UserCreationForm):
             'first_name',
             'last_name',
             'email',
+            'institutional_id',
+            'requested_role',
             'password1',
             'password2'
         ]
@@ -35,7 +48,9 @@ class RegistrationForm(UserCreationForm):
 
         self.fields['username'].help_text = 'Choose a unique username.'
         self.fields['email'].help_text = 'Use your JIIT college email address.'
-        self.fields['institutional_id'].help_text = 'Enter your JIIT enrollment number.'
+        self.fields['institutional_id'].help_text = (
+            'Enter your JIIT enrollment or employee ID.'
+        )
 
     def clean_email(self):
         email = self.cleaned_data['email'].strip().lower()

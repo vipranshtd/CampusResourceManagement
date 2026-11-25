@@ -124,12 +124,13 @@ class ProfileAdmin(admin.ModelAdmin):
     list_display = (
         'user',
         'role',
+        'requested_role',
         'institutional_id',
         'department',
         'phone',
     )
 
-    list_filter = ('role', 'department')
+    list_filter = ('role', 'requested_role', 'department')
 
     search_fields = (
         'user__username',
@@ -138,5 +139,9 @@ class ProfileAdmin(admin.ModelAdmin):
     )
 
     def save_model(self, request, obj, form, change):
+        # Clear the request when the requested role is approved.
+        if obj.requested_role and obj.role == obj.requested_role:
+            obj.requested_role = ''
+
         super().save_model(request, obj, form, change)
         sync_administrator_access(obj.user)

@@ -20,17 +20,34 @@ def register(request):
         if form.is_valid():
             with transaction.atomic():
                 user = form.save()
+                requested_role = form.cleaned_data['requested_role']
 
                 Profile.objects.create(
                     user=user,
-                    role='STUDENT',
+                    role=(
+                        'STUDENT'
+                        if requested_role == 'STUDENT'
+                        else 'PENDING'
+                    ),
+                    requested_role=(
+                        ''
+                        if requested_role == 'STUDENT'
+                        else requested_role
+                    ),
                     institutional_id=form.cleaned_data['institutional_id']
                 )
 
-            messages.success(
-                request,
-                "Registration successful. Please log in."
-            )
+            if requested_role == 'STUDENT':
+                messages.success(
+                    request,
+                    "Registration successful. You can now log in."
+                )
+            else:
+                messages.success(
+                    request,
+                    "Registration submitted successfully! "
+                    "Your account will be activated after administrator approval."
+                )
 
             return redirect('login')
 
@@ -40,6 +57,7 @@ def register(request):
     return render(request, 'accounts/register.html', {
         'form': form
     })
+
 
 
 @login_required
