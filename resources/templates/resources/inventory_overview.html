@@ -7,9 +7,10 @@
     <div>
         <h2 class="fw-bold mb-1">Inventory Management</h2>
         <p class="text-secondary mb-0">
-            Monitor, search and track campus assets.
+            Monitor, search and track campus inventory.
         </p>
     </div>
+
     <div class="d-flex gap-2">
         <a href="{% url 'resource_list' %}" class="btn btn-outline-primary">
             Manage Resources
@@ -23,52 +24,95 @@
 <!-- Inventory Statistics -->
 <div class="row g-3 mb-4">
 
-    <div class="col-6 col-lg">
+    <div class="col-6 col-lg-4">
         <div class="card shadow-sm h-100 border-start border-4 border-primary">
             <div class="card-body">
                 <p class="text-secondary small mb-1">Total Resources</p>
                 <h2 class="fw-bold mb-0">{{ total_resources }}</h2>
-                <small class="text-secondary">Registered assets</small>
+                <small class="text-secondary">Registered resource records</small>
             </div>
         </div>
     </div>
 
-    <div class="col-6 col-lg">
+    <div class="col-6 col-lg-4">
+        <div class="card shadow-sm h-100 border-start border-4 border-dark">
+            <div class="card-body">
+                <p class="text-secondary small mb-1">Total Units</p>
+                <h2 class="fw-bold mb-0">{{ total_units }}</h2>
+                <small class="text-secondary">Individual and quantity-based assets</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-lg-4">
         <div class="card shadow-sm h-100 border-start border-4 border-success">
             <div class="card-body">
-                <p class="text-secondary small mb-1">Available</p>
+                <p class="text-secondary small mb-1">Available Units</p>
                 <h2 class="fw-bold text-success mb-0">{{ available_count }}</h2>
-                <small class="text-secondary">Ready for booking</small>
+                <small class="text-secondary">Ready for issue or booking</small>
             </div>
         </div>
     </div>
 
-    <div class="col-6 col-lg">
+    <div class="col-6 col-lg-4">
         <div class="card shadow-sm h-100 border-start border-4 border-info">
             <div class="card-body">
-                <p class="text-secondary small mb-1">Issued</p>
+                <p class="text-secondary small mb-1">Issued Units</p>
                 <h2 class="fw-bold text-info mb-0">{{ issued_count }}</h2>
-                <small class="text-secondary">With users</small>
+                <small class="text-secondary">Currently with users</small>
             </div>
         </div>
     </div>
 
-    <div class="col-6 col-lg">
-        <div class="card shadow-sm h-100 border-start border-4 border-secondary">
-            <div class="card-body">
-                <p class="text-secondary small mb-1">Unavailable</p>
-                <h2 class="fw-bold text-secondary mb-0">{{ unavailable_count }}</h2>
-                <small class="text-secondary">Not bookable</small>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-6 col-lg">
+    <div class="col-6 col-lg-4">
         <div class="card shadow-sm h-100 border-start border-4 border-danger">
             <div class="card-body">
-                <p class="text-secondary small mb-1">Maintenance</p>
-                <h2 class="fw-bold text-danger mb-0">{{ maintenance_count }}</h2>
-                <small class="text-secondary">Being repaired</small>
+                <p class="text-secondary small mb-1">Damaged Units</p>
+                <h2 class="fw-bold text-danger mb-0">{{ damaged_units }}</h2>
+                <small class="text-secondary">Awaiting repair</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-lg-4">
+        <div class="card shadow-sm h-100 border-start border-4 border-warning">
+            <div class="card-body">
+                <p class="text-secondary small mb-1">Usable Units</p>
+                <h2 class="fw-bold mb-0">{{ usable_units }}</h2>
+                <small class="text-secondary">Excluding damaged units</small>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Resource Status Summary -->
+<div class="row g-3 mb-4">
+
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-1">Unavailable Resources</h6>
+                <h3 class="text-secondary fw-bold mb-0">
+                    {{ unavailable_count }}
+                </h3>
+                <small class="text-secondary">
+                    Resource records manually marked unavailable
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-1">Resources Under Maintenance</h6>
+                <h3 class="text-danger fw-bold mb-0">
+                    {{ maintenance_count }}
+                </h3>
+                <small class="text-secondary">
+                    Resource records currently under maintenance
+                </small>
             </div>
         </div>
     </div>
@@ -85,9 +129,16 @@
 
                 {% for category in category_data %}
                 <div class="d-flex justify-content-between align-items-center border-bottom py-2">
-                    <span>{{ category.name }}</span>
+                    <div>
+                        <span class="fw-semibold">{{ category.name }}</span>
+                        <br>
+                        <small class="text-secondary">
+                            {{ category.resource_count }} resource records
+                        </small>
+                    </div>
+
                     <span class="badge bg-primary rounded-pill">
-                        {{ category.resource_count }}
+                        {{ category.unit_count }} units
                     </span>
                 </div>
                 {% empty %}
@@ -105,12 +156,19 @@
 
                 {% for location in location_data %}
                 <div class="d-flex justify-content-between align-items-center border-bottom py-2">
-                    <span>
-                        {{ location.location__name }},
-                        {{ location.location__building }}
-                    </span>
+                    <div>
+                        <span class="fw-semibold">
+                            {{ location.location__name }}
+                        </span>
+                        <br>
+                        <small class="text-secondary">
+                            {{ location.location__building }}
+                            · {{ location.resource_count }} resource records
+                        </small>
+                    </div>
+
                     <span class="badge bg-primary rounded-pill">
-                        {{ location.resource_count }}
+                        {{ location.unit_count }} units
                     </span>
                 </div>
                 {% empty %}
@@ -165,7 +223,7 @@
                 <select name="status" class="form-select">
                     <option value="">All Statuses</option>
                     <option value="AVAILABLE" {% if selected_status == 'AVAILABLE' %}selected{% endif %}>Available</option>
-                    <option value="ISSUED" {% if selected_status == 'ISSUED' %}selected{% endif %}>Issued</option>
+                    <option value="ISSUED" {% if selected_status == 'ISSUED' %}selected{% endif %}>Fully Issued</option>
                     <option value="UNAVAILABLE" {% if selected_status == 'UNAVAILABLE' %}selected{% endif %}>Unavailable</option>
                     <option value="MAINTENANCE" {% if selected_status == 'MAINTENANCE' %}selected{% endif %}>Maintenance</option>
                 </select>
@@ -175,6 +233,7 @@
                 <button type="submit" class="btn btn-primary flex-grow-1">
                     Filter
                 </button>
+
                 <a href="{% url 'inventory_overview' %}"
                    class="btn btn-outline-secondary">
                     Clear
@@ -183,7 +242,7 @@
 
         </form>
 
-        <!-- Table -->
+        <!-- Inventory Table -->
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
 
@@ -193,6 +252,10 @@
                         <th>Asset Tag</th>
                         <th>Category</th>
                         <th>Location</th>
+                        <th>Total</th>
+                        <th>Available</th>
+                        <th>Issued</th>
+                        <th>Damaged</th>
                         <th>Condition</th>
                         <th>Status</th>
                         <th>Action</th>
@@ -204,16 +267,36 @@
                     {% for resource in resources %}
                     <tr>
                         <td class="fw-semibold">{{ resource.name }}</td>
-                        <td><small>{{ resource.asset_tag }}</small></td>
+
+                        <td>
+                            <small>{{ resource.asset_tag|default:"—" }}</small>
+                        </td>
+
                         <td>{{ resource.category.name }}</td>
+
                         <td>{{ resource.location.name }}</td>
+
+                        <td>{{ resource.inventory_total }}</td>
+
+                        <td class="fw-semibold text-success">
+                            {{ resource.inventory_available }}
+                        </td>
+
+                        <td class="text-info fw-semibold">
+                            {{ resource.inventory_issued }}
+                        </td>
+
+                        <td class="text-danger fw-semibold">
+                            {{ resource.inventory_damaged }}
+                        </td>
+
                         <td>{{ resource.get_condition_display }}</td>
 
                         <td>
                             {% if resource.inventory_status == 'AVAILABLE' %}
                                 <span class="badge bg-success">Available</span>
                             {% elif resource.inventory_status == 'ISSUED' %}
-                                <span class="badge bg-info text-dark">Issued</span>
+                                <span class="badge bg-info text-dark">Fully Issued</span>
                             {% elif resource.inventory_status == 'MAINTENANCE' %}
                                 <span class="badge bg-danger">Maintenance</span>
                             {% else %}
@@ -231,7 +314,7 @@
 
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="11" class="text-center py-5">
                             <h6 class="fw-semibold">No resources found</h6>
                             <p class="text-secondary mb-2">
                                 Try changing your search or filters.
