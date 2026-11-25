@@ -1,0 +1,254 @@
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Inventory Management</h2>
+        <p class="text-secondary mb-0">
+            Monitor, search and track campus assets.
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'resource_list' %}" class="btn btn-outline-primary">
+            Manage Resources
+        </a>
+        <a href="{% url 'resource_create' %}" class="btn btn-primary">
+            + Add Resource
+        </a>
+    </div>
+</div>
+
+<!-- Inventory Statistics -->
+<div class="row g-3 mb-4">
+
+    <div class="col-6 col-lg">
+        <div class="card shadow-sm h-100 border-start border-4 border-primary">
+            <div class="card-body">
+                <p class="text-secondary small mb-1">Total Resources</p>
+                <h2 class="fw-bold mb-0">{{ total_resources }}</h2>
+                <small class="text-secondary">Registered assets</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-lg">
+        <div class="card shadow-sm h-100 border-start border-4 border-success">
+            <div class="card-body">
+                <p class="text-secondary small mb-1">Available</p>
+                <h2 class="fw-bold text-success mb-0">{{ available_count }}</h2>
+                <small class="text-secondary">Ready for booking</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-lg">
+        <div class="card shadow-sm h-100 border-start border-4 border-info">
+            <div class="card-body">
+                <p class="text-secondary small mb-1">Issued</p>
+                <h2 class="fw-bold text-info mb-0">{{ issued_count }}</h2>
+                <small class="text-secondary">With users</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-lg">
+        <div class="card shadow-sm h-100 border-start border-4 border-secondary">
+            <div class="card-body">
+                <p class="text-secondary small mb-1">Unavailable</p>
+                <h2 class="fw-bold text-secondary mb-0">{{ unavailable_count }}</h2>
+                <small class="text-secondary">Not bookable</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-lg">
+        <div class="card shadow-sm h-100 border-start border-4 border-danger">
+            <div class="card-body">
+                <p class="text-secondary small mb-1">Maintenance</p>
+                <h2 class="fw-bold text-danger mb-0">{{ maintenance_count }}</h2>
+                <small class="text-secondary">Being repaired</small>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Resource Distribution -->
+<div class="row g-4 mb-4">
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3">Category Distribution</h5>
+
+                {% for category in category_data %}
+                <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <span>{{ category.name }}</span>
+                    <span class="badge bg-primary rounded-pill">
+                        {{ category.resource_count }}
+                    </span>
+                </div>
+                {% empty %}
+                <p class="text-secondary">No categories available.</p>
+                {% endfor %}
+
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3">Location Distribution</h5>
+
+                {% for location in location_data %}
+                <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <span>
+                        {{ location.location__name }},
+                        {{ location.location__building }}
+                    </span>
+                    <span class="badge bg-primary rounded-pill">
+                        {{ location.resource_count }}
+                    </span>
+                </div>
+                {% empty %}
+                <p class="text-secondary">No locations available.</p>
+                {% endfor %}
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Inventory Table -->
+<div class="card shadow-sm">
+    <div class="card-body">
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <h5 class="fw-bold mb-1">All Inventory Items</h5>
+                <small class="text-secondary">
+                    Showing {{ resources|length }} matching resources
+                </small>
+            </div>
+        </div>
+
+        <!-- Search and Filters -->
+        <form method="GET" class="row g-2 mb-4">
+
+            <div class="col-lg-4 col-md-6">
+                <input
+                    type="text"
+                    name="q"
+                    class="form-control"
+                    placeholder="Search name or asset tag..."
+                    value="{{ query }}"
+                >
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+                <select name="category" class="form-select">
+                    <option value="">All Categories</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}"
+                        {% if selected_category == category.id|stringformat:"s" %}selected{% endif %}>
+                        {{ category.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+                <select name="status" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="AVAILABLE" {% if selected_status == 'AVAILABLE' %}selected{% endif %}>Available</option>
+                    <option value="ISSUED" {% if selected_status == 'ISSUED' %}selected{% endif %}>Issued</option>
+                    <option value="UNAVAILABLE" {% if selected_status == 'UNAVAILABLE' %}selected{% endif %}>Unavailable</option>
+                    <option value="MAINTENANCE" {% if selected_status == 'MAINTENANCE' %}selected{% endif %}>Maintenance</option>
+                </select>
+            </div>
+
+            <div class="col-lg-2 col-md-6 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1">
+                    Filter
+                </button>
+                <a href="{% url 'inventory_overview' %}"
+                   class="btn btn-outline-secondary">
+                    Clear
+                </a>
+            </div>
+
+        </form>
+
+        <!-- Table -->
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+                    <tr>
+                        <th>Resource</th>
+                        <th>Asset Tag</th>
+                        <th>Category</th>
+                        <th>Location</th>
+                        <th>Condition</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for resource in resources %}
+                    <tr>
+                        <td class="fw-semibold">{{ resource.name }}</td>
+                        <td><small>{{ resource.asset_tag }}</small></td>
+                        <td>{{ resource.category.name }}</td>
+                        <td>{{ resource.location.name }}</td>
+                        <td>{{ resource.get_condition_display }}</td>
+
+                        <td>
+                            {% if resource.inventory_status == 'AVAILABLE' %}
+                                <span class="badge bg-success">Available</span>
+                            {% elif resource.inventory_status == 'ISSUED' %}
+                                <span class="badge bg-info text-dark">Issued</span>
+                            {% elif resource.inventory_status == 'MAINTENANCE' %}
+                                <span class="badge bg-danger">Maintenance</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Unavailable</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <a href="{% url 'resource_update' resource.id %}"
+                               class="btn btn-sm btn-outline-primary">
+                                View / Edit
+                            </a>
+                        </td>
+                    </tr>
+
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <h6 class="fw-semibold">No resources found</h6>
+                            <p class="text-secondary mb-2">
+                                Try changing your search or filters.
+                            </p>
+                            <a href="{% url 'inventory_overview' %}"
+                               class="btn btn-sm btn-outline-primary">
+                                Clear Filters
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

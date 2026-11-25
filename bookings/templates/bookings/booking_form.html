@@ -3,7 +3,6 @@
 
 {% block content %}
 <div class="container py-4">
-
     <div class="row justify-content-center">
         <div class="col-lg-8">
 
@@ -37,6 +36,19 @@
                             </label>
                             {{ form.resource }}
                             {% for error in form.resource.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.quantity.id_for_label }}" class="form-label fw-semibold">
+                                Quantity Required
+                            </label>
+                            {{ form.quantity }}
+                            {% if form.quantity.help_text %}
+                                <div class="form-text">{{ form.quantity.help_text }}</div>
+                            {% endif %}
+                            {% for error in form.quantity.errors %}
                                 <div class="text-danger small mt-1">{{ error }}</div>
                             {% endfor %}
                         </div>
@@ -96,12 +108,12 @@
 
         </div>
     </div>
-
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const resource = document.getElementById('{{ form.resource.id_for_label }}');
+    const quantity = document.getElementById('{{ form.quantity.id_for_label }}');
     const start = document.getElementById('{{ form.start_datetime.id_for_label }}');
     const end = document.getElementById('{{ form.end_datetime.id_for_label }}');
     const message = document.getElementById('availabilityMessage');
@@ -143,12 +155,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function checkAvailability() {
         const resourceId = resource.value;
+        const quantityValue = quantity.value;
         const startValue = start.value;
         const endValue = end.value;
 
         resetAvailability();
 
-        if (!resourceId || !startValue || !endValue) {
+        if (!resourceId || !quantityValue || !startValue || !endValue) {
+            return;
+        }
+
+        if (!Number.isInteger(Number(quantityValue)) || Number(quantityValue) < 1) {
+            showMessage('danger', 'Please enter a valid quantity of at least 1.');
             return;
         }
 
@@ -170,6 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const params = new URLSearchParams({
             resource: resourceId,
+            quantity: quantityValue,
             start_datetime: startValue,
             end_datetime: endValue
         });
@@ -216,13 +235,14 @@ document.addEventListener('DOMContentLoaded', function () {
         clearTimeout(debounceTimer);
         resetAvailability();
 
-        if (resource.value && start.value && end.value) {
+        if (resource.value && quantity.value && start.value && end.value) {
             showMessage('secondary', 'Waiting to check availability...');
             debounceTimer = setTimeout(checkAvailability, 400);
         }
     }
 
     resource.addEventListener('change', scheduleCheck);
+    quantity.addEventListener('input', scheduleCheck);
     start.addEventListener('change', scheduleCheck);
     end.addEventListener('change', scheduleCheck);
 
@@ -233,8 +253,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Automatically check when the form is reloaded with previously entered values.
-    if (resource.value && start.value && end.value) {
+    if (resource.value && quantity.value && start.value && end.value) {
         scheduleCheck();
     }
 });

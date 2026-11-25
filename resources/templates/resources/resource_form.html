@@ -15,14 +15,14 @@
                 <h2 class="fw-bold mt-3 mb-1">{{ title }}</h2>
 
                 <p class="text-muted mb-0">
-                    Enter the resource details and configure its availability.
+                    Add or update a resource and configure how its inventory is tracked.
                 </p>
             </div>
 
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-4">
 
-                    <form method="POST">
+                    <form method="POST" id="resourceForm">
                         {% csrf_token %}
 
                         {% if form.non_field_errors %}
@@ -33,46 +33,121 @@
                             </div>
                         {% endif %}
 
-                        {% for field in form %}
-                            <div class="mb-4">
+                        <div class="mb-4">
+                            <label for="{{ form.name.id_for_label }}" class="form-label fw-semibold">
+                                Resource Name
+                            </label>
+                            {{ form.name }}
+                            {% for error in form.name.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
 
-                                <label
-                                    for="{{ field.id_for_label }}"
-                                    class="form-label fw-semibold"
-                                >
-                                    {{ field.label }}
-                                </label>
-
-                                {{ field }}
-
-                                {% if field.help_text %}
-                                    <div class="form-text">
-                                        {{ field.help_text }}
-                                    </div>
-                                {% endif %}
-
-                                {% for error in field.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-
+                        <div class="mb-4">
+                            <label for="{{ form.tracking_type.id_for_label }}" class="form-label fw-semibold">
+                                Inventory Type
+                            </label>
+                            {{ form.tracking_type }}
+                            <div class="form-text">
+                                Choose whether this resource is tracked individually or by total stock quantity.
                             </div>
-                        {% endfor %}
+                            {% for error in form.tracking_type.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div id="assetTagSection" class="mb-4">
+                            <label for="{{ form.asset_tag.id_for_label }}" class="form-label fw-semibold">
+                                Asset Tag
+                            </label>
+                            {{ form.asset_tag }}
+                            <div class="form-text">
+                                Enter a unique identification tag for this individual asset.
+                            </div>
+                            {% for error in form.asset_tag.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div id="quantitySection" class="mb-4">
+                            <label for="{{ form.total_quantity.id_for_label }}" class="form-label fw-semibold">
+                                Total Stock Quantity
+                            </label>
+                            {{ form.total_quantity }}
+                            <div class="form-text">
+                                Enter the total number of units available in inventory.
+                            </div>
+                            {% for error in form.total_quantity.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.category.id_for_label }}" class="form-label fw-semibold">
+                                Category
+                            </label>
+                            {{ form.category }}
+                            {% for error in form.category.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.location.id_for_label }}" class="form-label fw-semibold">
+                                Campus Location
+                            </label>
+                            {{ form.location }}
+                            {% for error in form.location.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.description.id_for_label }}" class="form-label fw-semibold">
+                                Description
+                            </label>
+                            {{ form.description }}
+                            {% for error in form.description.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label for="{{ form.status.id_for_label }}" class="form-label fw-semibold">
+                                    Availability Status
+                                </label>
+                                {{ form.status }}
+                                {% for error in form.status.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <label for="{{ form.condition.id_for_label }}" class="form-label fw-semibold">
+                                    Physical Condition
+                                </label>
+                                {{ form.condition }}
+                                {% for error in form.condition.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info small">
+                            <strong>Inventory tip:</strong>
+                            Use Individual Asset for laptops and cameras.
+                            Use Quantity Based for projectors, markers, cables and other bulk resources.
+                        </div>
 
                         <div class="d-flex flex-wrap gap-2 mt-4">
-
                             <button type="submit" class="btn btn-primary px-4">
                                 Save Resource
                             </button>
 
-                            <a
-                                href="{% url 'resource_list' %}"
-                                class="btn btn-outline-secondary px-4"
-                            >
+                            <a href="{% url 'resource_list' %}" class="btn btn-outline-secondary px-4">
                                 Cancel
                             </a>
-
                         </div>
 
                     </form>
@@ -84,4 +159,39 @@
     </div>
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const trackingType = document.getElementById('{{ form.tracking_type.id_for_label }}');
+    const assetTagSection = document.getElementById('assetTagSection');
+    const quantitySection = document.getElementById('quantitySection');
+
+    const assetTag = document.getElementById('{{ form.asset_tag.id_for_label }}');
+    const totalQuantity = document.getElementById('{{ form.total_quantity.id_for_label }}');
+
+    function updateInventoryFields() {
+        const individual = trackingType.value === 'INDIVIDUAL';
+
+        assetTagSection.style.display = individual ? 'block' : 'none';
+        quantitySection.style.display = individual ? 'none' : 'block';
+
+        assetTag.required = individual;
+        totalQuantity.required = !individual;
+
+        if (individual) {
+            totalQuantity.value = 1;
+        } else {
+            assetTag.value = '';
+            if (!totalQuantity.value || Number(totalQuantity.value) < 1) {
+                totalQuantity.value = 1;
+            }
+        }
+    }
+
+    trackingType.addEventListener('change', updateInventoryFields);
+
+    updateInventoryFields();
+});
+</script>
+
 {% endblock %}

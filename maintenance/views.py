@@ -65,8 +65,19 @@ def report_maintenance(request):
 
             record.save()
 
-            if resource.status != 'MAINTENANCE':
+            if resource.tracking_type == 'INDIVIDUAL':
                 resource.status = 'MAINTENANCE'
+                resource.save(update_fields=['status'])
+
+            else:
+                usable_stock = max(
+                    resource.total_quantity - resource.damaged_quantity,
+                    0
+                )
+
+                resource.status = (
+                    'AVAILABLE' if usable_stock > 0 else 'MAINTENANCE'
+                )
                 resource.save(update_fields=['status'])
 
         messages.success(
@@ -130,18 +141,44 @@ def update_maintenance_status(request, record_id):
             record.resolved_at = timezone.now()
             record.save(update_fields=['status', 'resolved_at'])
 
-            other_open_records = MaintenanceRecord.objects.filter(
-                resource=resource,
-                status__in=['REPORTED', 'IN_PROGRESS']
-            ).exclude(pk=record.pk)
+            if record.stock_deducted:
+                resource.damaged_quantity = max(
+                    resource.damaged_quantity - record.quantity_affected,
+                    0
+                )
 
-            if not other_open_records.exists():
-                resource.status = 'AVAILABLE'
-                resource.save(update_fields=['status'])
+            if resource.tracking_type == 'INDIVIDUAL':
+                other_open_records = MaintenanceRecord.objects.filter(
+                    resource=resource,
+                    status__in=['REPORTED', 'IN_PROGRESS']
+                ).exclude(pk=record.pk)
+
+                if not other_open_records.exists():
+                    resource.status = 'AVAILABLE'
+                    resource.condition = 'GOOD'
+
+            else:
+                usable_stock = max(
+                    resource.total_quantity - resource.damaged_quantity,
+                    0
+                )
+
+                resource.status = (
+                    'AVAILABLE' if usable_stock > 0 else 'MAINTENANCE'
+                )
+
+            resource.save(
+                update_fields=[
+                    'damaged_quantity',
+                    'status',
+                    'condition'
+                ]
+            )
 
             messages.success(
                 request,
-                'Maintenance issue resolved successfully.'
+                f'Maintenance resolved. {record.quantity_affected} '
+                f'unit(s) covered by this record have been processed.'
             )
 
     return redirect('maintenance_list')
