@@ -89,7 +89,6 @@ def get_reserved_quantity(resource, start, end, exclude_booking_id=None):
         events.append((effective_start, reserved_quantity))
         events.append((effective_end, -reserved_quantity))
 
-    # Process end events before start events at the same timestamp.
     events.sort(key=lambda event: (event[0], event[1]))
 
     current_reserved = 0
@@ -136,51 +135,101 @@ def get_available_quantity(resource, start, end, exclude_booking_id=None):
 
 @login_required
 def resource_catalog(request):
-    resources = Resource.objects.select_related(
-        'category', 'location'
-    ).filter(status='AVAILABLE')
+    resources = list(
+        Resource.objects.select_related(
+            'category', 'location'
+        ).filter(status='AVAILABLE')
+    )
 
     query = request.GET.get('q', '').strip()
     category = request.GET.get('category', '').strip()
 
     if query:
-        resources = resources.filter(
-            Q(name__icontains=query) |
-            Q(asset_tag__icontains=query)
-        )
+        resources = [
+            resource for resource in resources
+            if query.lower() in resource.name.lower()
+            or query.lower() in (resource.asset_tag or '').lower()
+        ]
 
     if category.isdigit():
-        resources = resources.filter(category_id=int(category))
+        resources = [
+            resource for resource in resources
+            if resource.category_id == int(category)
+        ]
+
+    from django.db.models import Sum, F
+
+    issued_bookings = Booking.objects.filter(
+        status='ISSUED'
+    ).values('resource_id').annotate(
+        issued_quantity=Sum(
+            F('quantity') - F('returned_quantity')
+        )
+    )
+
+    issued_map = {
+        item['resource_id']: item['issued_quantity'] or 0
+        for item in issued_bookings
+    }
+
+    resource_data = []
+
+    for resource in resources:
+        if resource.tracking_type == 'INDIVIDUAL':
+            total_quantity = 1
+            damaged_quantity = (
+                1 if (
+                    resource.condition == 'DAMAGED'
+                    or resource.status == 'MAINTENANCE'
+                ) else 0
+            )
+        else:
+            total_quantity = resource.total_quantity
+            damaged_quantity = min(
+                resource.damaged_quantity,
+                total_quantity
+            )
+
+        usable_quantity = max(
+            total_quantity - damaged_quantity,
+            0
+        )
+
+        issued_quantity = min(
+            issued_map.get(resource.id, 0),
+            usable_quantity
+        )
+
+        available_quantity = max(
+            usable_quantity - issued_quantity,
+            0
+        )
+
+        resource.inventory_total = total_quantity
+        resource.inventory_damaged = damaged_quantity
+        resource.inventory_issued = issued_quantity
+        resource.inventory_available = available_quantity
+
+        resource_data.append({
+            'id': resource.id,
+            'name': resource.name,
+            'category': resource.category.name,
+            'description': resource.description[:100],
+            'asset_tag': resource.asset_tag or '',
+            'location': resource.location.name,
+            'condition': resource.get_condition_display(),
+            'tracking_type': resource.tracking_type,
+            'total_quantity': total_quantity,
+            'available_quantity': available_quantity,
+            'issued_quantity': issued_quantity,
+            'damaged_quantity': damaged_quantity,
+            'booking_url': reverse(
+                'create_booking_for_resource',
+                args=[resource.id]
+            ),
+        })
 
     if request.GET.get('ajax') == '1':
-        resource_data = []
-
-        for resource in resources:
-            if resource.tracking_type == 'INDIVIDUAL':
-                usable_quantity = 1
-            else:
-                usable_quantity = max(
-                    resource.total_quantity - resource.damaged_quantity,
-                    0
-                )
-
-            resource_data.append({
-                'id': resource.id,
-                'name': resource.name,
-                'category': resource.category.name,
-                'description': resource.description[:100],
-                'asset_tag': resource.asset_tag or '',
-                'location': resource.location.name,
-                'condition': resource.get_condition_display(),
-                'tracking_type': resource.tracking_type,
-                'total_quantity': resource.total_quantity,
-                'available_quantity': usable_quantity,
-                'booking_url': reverse(
-                    'create_booking_for_resource',
-                    args=[resource.id]
-                ),
-            })
-
         return JsonResponse({'resources': resource_data})
 
     return render(request, 'bookings/resource_catalog.html', {
@@ -424,6 +473,13 @@ def manage_bookings(request):
 @require_POST
 def update_booking_status(request, booking_id):
     action = request.POST.get('action')
+    is_ajax = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        and action in ['approve', 'reject']
+    )
+
+    ajax_success = False
+    ajax_message = ''
 
     with transaction.atomic():
         booking = get_object_or_404(
@@ -438,16 +494,12 @@ def update_booking_status(request, booking_id):
         if action == 'approve':
 
             if booking.status != 'PENDING':
-                messages.error(
-                    request,
-                    'Only pending bookings can be approved.'
-                )
+                ajax_message = 'Only pending bookings can be approved.'
+                messages.error(request, ajax_message)
 
             elif resource.status != 'AVAILABLE':
-                messages.error(
-                    request,
-                    'This resource is currently unavailable.'
-                )
+                ajax_message = 'This resource is currently unavailable.'
+                messages.error(request, ajax_message)
 
             else:
                 available = get_available_quantity(
@@ -458,10 +510,10 @@ def update_booking_status(request, booking_id):
                 )
 
                 if booking.quantity > available:
-                    messages.error(
-                        request,
+                    ajax_message = (
                         f'Cannot approve. Only {available} units remain available.'
                     )
+                    messages.error(request, ajax_message)
 
                 else:
                     booking.status = 'APPROVED'
@@ -470,18 +522,16 @@ def update_booking_status(request, booking_id):
                         update_fields=['status', 'reviewed_by']
                     )
 
-                    messages.success(
-                        request,
-                        'Booking approved successfully.'
-                    )
+                    ajax_success = True
+                    ajax_message = 'Booking approved successfully.'
+
+                    messages.success(request, ajax_message)
 
         elif action == 'reject':
 
             if booking.status != 'PENDING':
-                messages.error(
-                    request,
-                    'Only pending bookings can be rejected.'
-                )
+                ajax_message = 'Only pending bookings can be rejected.'
+                messages.error(request, ajax_message)
 
             else:
                 booking.status = 'REJECTED'
@@ -490,7 +540,10 @@ def update_booking_status(request, booking_id):
                     update_fields=['status', 'reviewed_by']
                 )
 
-                messages.success(request, 'Booking rejected.')
+                ajax_success = True
+                ajax_message = 'Booking rejected successfully.'
+
+                messages.success(request, ajax_message)
 
         elif action == 'issue':
 
@@ -649,5 +702,13 @@ def update_booking_status(request, booking_id):
 
         else:
             messages.error(request, 'Invalid booking action.')
+
+    if is_ajax:
+        return JsonResponse({
+            'success': ajax_success,
+            'message': ajax_message,
+            'status': booking.status,
+            'status_label': booking.get_status_display(),
+        })
 
     return redirect('manage_bookings')

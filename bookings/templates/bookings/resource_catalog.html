@@ -8,7 +8,7 @@
         <div>
             <h2 class="fw-bold mb-1">Campus Resource Catalog</h2>
             <p class="text-muted mb-0">
-                Browse available equipment and facilities across the campus.
+                Browse equipment and facilities across the campus.
             </p>
         </div>
 
@@ -17,12 +17,13 @@
         </a>
     </div>
 
-    <!-- Search and Filters -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-7">
-                    <label for="resourceSearch" class="form-label fw-semibold">Search Resources</label>
+                    <label for="resourceSearch" class="form-label fw-semibold">
+                        Search Resources
+                    </label>
                     <input
                         type="text"
                         id="resourceSearch"
@@ -33,11 +34,15 @@
                 </div>
 
                 <div class="col-md-5">
-                    <label for="categoryFilter" class="form-label fw-semibold">Filter by Category</label>
+                    <label for="categoryFilter" class="form-label fw-semibold">
+                        Filter by Category
+                    </label>
                     <select id="categoryFilter" class="form-select">
                         <option value="">All Categories</option>
                         {% for category in categories %}
-                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        <option value="{{ category.id }}">
+                            {{ category.name }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -47,14 +52,15 @@
                 <small class="text-muted" id="resultCount">
                     {{ resources|length }} resources available
                 </small>
-                <button type="button" id="clearFilters" class="btn btn-sm btn-outline-secondary">
+
+                <button type="button" id="clearFilters"
+                        class="btn btn-sm btn-outline-secondary">
                     Clear Filters
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Resource Cards -->
     <div class="row g-4" id="resourceResults">
 
         {% for resource in resources %}
@@ -66,9 +72,16 @@
                         <span class="badge bg-light text-primary border">
                             {{ resource.category.name }}
                         </span>
+
+                        {% if resource.inventory_available > 0 %}
                         <span class="badge bg-success-subtle text-success">
                             Available
                         </span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary">
+                            Currently Issued
+                        </span>
+                        {% endif %}
                     </div>
 
                     <h5 class="fw-bold mb-2">{{ resource.name }}</h5>
@@ -81,7 +94,7 @@
 
                     <div class="small mb-2">
                         <span class="text-muted">Asset Tag:</span>
-                        <strong>{{ resource.asset_tag }}</strong>
+                        <strong>{{ resource.asset_tag|default:"—" }}</strong>
                     </div>
 
                     <div class="small mb-2">
@@ -94,16 +107,49 @@
                         <strong>{{ resource.get_condition_display }}</strong>
                     </div>
 
-                    <a href="{% url 'create_booking_for_resource' resource.id %}" class="btn btn-primary w-100">
+                    <div class="bg-light rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between small mb-2">
+                            <span>Total Units</span>
+                            <strong>{{ resource.inventory_total }}</strong>
+                        </div>
+
+                        <div class="d-flex justify-content-between small mb-2">
+                            <span class="text-success">Available</span>
+                            <strong class="text-success">
+                                {{ resource.inventory_available }}
+                            </strong>
+                        </div>
+
+                        <div class="d-flex justify-content-between small mb-2">
+                            <span class="text-info">Issued</span>
+                            <strong>{{ resource.inventory_issued }}</strong>
+                        </div>
+
+                        <div class="d-flex justify-content-between small">
+                            <span class="text-danger">Damaged</span>
+                            <strong class="text-danger">
+                                {{ resource.inventory_damaged }}
+                            </strong>
+                        </div>
+                    </div>
+
+                    {% if resource.inventory_available > 0 %}
+                    <a href="{% url 'create_booking_for_resource' resource.id %}"
+                       class="btn btn-primary w-100">
                         Request Booking →
                     </a>
+                    {% else %}
+                    <button class="btn btn-secondary w-100" disabled>
+                        No Units Available
+                    </button>
+                    {% endif %}
 
                 </div>
             </div>
         </div>
 
         {% empty %}
-        <div class="col-12" id="emptyInitial">
+        <div class="col-12">
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center py-5">
                     <h5 class="fw-bold">No resources available</h5>
@@ -117,19 +163,18 @@
         {% endfor %}
 
     </div>
-
 </div>
 
 <style>
-    .resource-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        border-radius: 12px;
-    }
+.resource-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 12px;
+}
 
-    .resource-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.09) !important;
-    }
+.resource-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.09) !important;
+}
 </style>
 
 <script>
@@ -151,53 +196,144 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderResources(resources) {
         resultsContainer.replaceChildren();
+        resultCount.textContent = `${resources.length} resources found`;
 
         if (resources.length === 0) {
-            const emptyColumn = createElement('div', 'col-12', '');
-            const emptyCard = createElement('div', 'card border-0 shadow-sm', '');
-            const emptyBody = createElement('div', 'card-body text-center py-5', '');
+            const column = createElement('div', 'col-12', '');
+            const card = createElement('div', 'card border-0 shadow-sm', '');
+            const body = createElement('div', 'card-body text-center py-5', '');
 
-            emptyBody.appendChild(createElement('h5', 'fw-bold', 'No matching resources found'));
-            emptyBody.appendChild(createElement('p', 'text-muted mb-0', 'Try changing your search or filters.'));
+            body.appendChild(
+                createElement('h5', 'fw-bold', 'No matching resources found')
+            );
 
-            emptyCard.appendChild(emptyBody);
-            emptyColumn.appendChild(emptyCard);
-            resultsContainer.appendChild(emptyColumn);
+            body.appendChild(
+                createElement('p', 'text-muted mb-0',
+                    'Try changing your search or filters.')
+            );
+
+            card.appendChild(body);
+            column.appendChild(card);
+            resultsContainer.appendChild(column);
             return;
         }
 
         resources.forEach(function (resource) {
-            const column = createElement('div', 'col-sm-6 col-lg-4 col-xl-3', '');
-            const card = createElement('div', 'card h-100 border-0 shadow-sm resource-card', '');
+            const column = createElement(
+                'div', 'col-sm-6 col-lg-4 col-xl-3', ''
+            );
+
+            const card = createElement(
+                'div', 'card h-100 border-0 shadow-sm resource-card', ''
+            );
+
             const body = createElement('div', 'card-body p-4', '');
 
-            const top = createElement('div', 'd-flex justify-content-between align-items-start mb-3', '');
-            top.appendChild(createElement('span', 'badge bg-light text-primary border', resource.category));
-            top.appendChild(createElement('span', 'badge bg-success-subtle text-success', 'Available'));
+            const top = createElement(
+                'div',
+                'd-flex justify-content-between align-items-start mb-3',
+                ''
+            );
+
+            top.appendChild(
+                createElement(
+                    'span',
+                    'badge bg-light text-primary border',
+                    resource.category
+                )
+            );
+
+            top.appendChild(
+                resource.available_quantity > 0
+                    ? createElement(
+                        'span',
+                        'badge bg-success-subtle text-success',
+                        'Available'
+                    )
+                    : createElement(
+                        'span',
+                        'badge bg-secondary-subtle text-secondary',
+                        'Currently Issued'
+                    )
+            );
 
             body.appendChild(top);
-            body.appendChild(createElement('h5', 'fw-bold mb-2', resource.name));
-            body.appendChild(createElement('p', 'text-muted small mb-3', resource.description || 'No description available.'));
+
+            body.appendChild(
+                createElement('h5', 'fw-bold mb-2', resource.name)
+            );
+
+            body.appendChild(
+                createElement(
+                    'p',
+                    'text-muted small mb-3',
+                    resource.description || 'No description available.'
+                )
+            );
+
             body.appendChild(createElement('hr', 'my-3', ''));
 
-            const asset = createElement('div', 'small mb-2', '');
-            asset.appendChild(createElement('span', 'text-muted', 'Asset Tag: '));
-            asset.appendChild(createElement('strong', '', resource.asset_tag));
-            body.appendChild(asset);
+            function addDetail(label, value, className = 'small mb-2') {
+                const line = createElement('div', className, '');
 
-            const location = createElement('div', 'small mb-2', '');
-            location.appendChild(createElement('span', 'text-muted', 'Location: '));
-            location.appendChild(createElement('strong', '', resource.location));
-            body.appendChild(location);
+                line.appendChild(
+                    createElement('span', 'text-muted', label + ': ')
+                );
 
-            const condition = createElement('div', 'small mb-3', '');
-            condition.appendChild(createElement('span', 'text-muted', 'Condition: '));
-            condition.appendChild(createElement('strong', '', resource.condition));
-            body.appendChild(condition);
+                line.appendChild(
+                    createElement('strong', '', String(value))
+                );
 
-            const bookingLink = createElement('a', 'btn btn-primary w-100', 'Request Booking →');
-            bookingLink.href = resource.booking_url;
-            body.appendChild(bookingLink);
+                body.appendChild(line);
+            }
+
+            addDetail('Asset Tag', resource.asset_tag || '—');
+            addDetail('Location', resource.location);
+            addDetail('Condition', resource.condition, 'small mb-3');
+
+            const stock = createElement(
+                'div', 'bg-light rounded p-3 mb-3', ''
+            );
+
+            function addStock(label, value, color = '') {
+                const line = createElement(
+                    'div',
+                    'd-flex justify-content-between small mb-2',
+                    ''
+                );
+
+                line.appendChild(createElement('span', color, label));
+                line.appendChild(createElement('strong', color, String(value)));
+
+                stock.appendChild(line);
+            }
+
+            addStock('Total Units', resource.total_quantity);
+            addStock('Available', resource.available_quantity, 'text-success');
+            addStock('Issued', resource.issued_quantity, 'text-info');
+            addStock('Damaged', resource.damaged_quantity, 'text-danger');
+
+            body.appendChild(stock);
+
+            if (resource.available_quantity > 0) {
+                const bookingLink = createElement(
+                    'a',
+                    'btn btn-primary w-100',
+                    'Request Booking →'
+                );
+
+                bookingLink.href = resource.booking_url;
+                body.appendChild(bookingLink);
+            } else {
+                const unavailableButton = createElement(
+                    'button',
+                    'btn btn-secondary w-100',
+                    'No Units Available'
+                );
+
+                unavailableButton.disabled = true;
+                body.appendChild(unavailableButton);
+            }
 
             card.appendChild(body);
             column.appendChild(card);
@@ -221,14 +357,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) {
                 throw new Error('Unable to load resources.');
             }
+
             return response.json();
         })
         .then(function (data) {
             renderResources(data.resources);
-            resultCount.textContent = `${data.resources.length} resources available`;
         })
         .catch(function () {
-            resultCount.textContent = 'Unable to load resources. Please try again.';
+            resultCount.textContent =
+                'Unable to load resources. Please try again.';
         });
     }
 
@@ -246,4 +383,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+
 {% endblock %}

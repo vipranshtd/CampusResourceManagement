@@ -17,6 +17,8 @@
         </a>
     </div>
 
+    <div id="ajaxMessage" class="alert d-none" role="alert"></div>
+
     <div class="card border-0 shadow-sm">
         <div class="card-body">
 
@@ -38,9 +40,8 @@
                     <tbody>
                         {% for booking in bookings %}
 
-                        <tr>
+                        <tr id="booking-row-{{ booking.id }}">
 
-                            <!-- USER DETAILS -->
                             <td>
                                 <div class="fw-semibold">
                                     {{ booking.user.get_full_name|default:booking.user.username }}
@@ -59,41 +60,38 @@
                                 {% endif %}
                             </td>
 
-                            <!-- RESOURCE DETAILS -->
                             <td>
                                 <div class="fw-semibold">
                                     {{ booking.resource.name }}
                                 </div>
 
                                 {% if booking.resource.tracking_type == 'INDIVIDUAL' %}
-                                    <small class="text-muted">
-                                        Asset: {{ booking.resource.asset_tag }}
-                                    </small>
+                                <small class="text-muted">
+                                    Asset: {{ booking.resource.asset_tag }}
+                                </small>
                                 {% else %}
-                                    <small class="text-muted">
-                                        Quantity-based inventory
-                                    </small>
+                                <small class="text-muted">
+                                    Quantity-based inventory
+                                </small>
                                 {% endif %}
                             </td>
 
-                            <!-- QUANTITY DETAILS -->
                             <td>
                                 <div class="fw-semibold">
                                     {{ booking.quantity }} unit(s)
                                 </div>
 
                                 {% if booking.status == 'ISSUED' or booking.status == 'RETURNED' %}
-                                    <small class="text-muted">
-                                        Returned: {{ booking.returned_quantity }}/{{ booking.quantity }}
-                                    </small>
+                                <small class="text-muted">
+                                    Returned: {{ booking.returned_quantity }}/{{ booking.quantity }}
+                                </small>
 
-                                    <div class="small text-danger">
-                                        Damaged: {{ booking.damaged_quantity }}
-                                    </div>
+                                <div class="small text-danger">
+                                    Damaged: {{ booking.damaged_quantity }}
+                                </div>
                                 {% endif %}
                             </td>
 
-                            <!-- BOOKING PERIOD -->
                             <td>
                                 <div>
                                     {{ booking.start_datetime|date:"d M Y, h:i A" }}
@@ -104,186 +102,169 @@
                                 </small>
                             </td>
 
-                            <!-- PURPOSE -->
                             <td>
                                 {{ booking.purpose|truncatechars:70 }}
                             </td>
 
-                            <!-- STATUS -->
-                            <td>
+                            <td class="booking-status">
                                 {% if booking.status == 'PENDING' %}
-                                    <span class="badge bg-warning text-dark">Pending</span>
-
+                                <span class="badge bg-warning text-dark">Pending</span>
                                 {% elif booking.status == 'APPROVED' %}
-                                    <span class="badge bg-primary">Approved</span>
-
+                                <span class="badge bg-primary">Approved</span>
                                 {% elif booking.status == 'REJECTED' %}
-                                    <span class="badge bg-danger">Rejected</span>
-
+                                <span class="badge bg-danger">Rejected</span>
                                 {% elif booking.status == 'ISSUED' %}
-                                    <span class="badge bg-info text-dark">Issued</span>
-
+                                <span class="badge bg-info text-dark">Issued</span>
                                 {% elif booking.status == 'RETURNED' %}
-                                    <span class="badge bg-success">Returned</span>
-
+                                <span class="badge bg-success">Returned</span>
                                 {% elif booking.status == 'CANCELLED' %}
-                                    <span class="badge bg-secondary">Cancelled</span>
+                                <span class="badge bg-secondary">Cancelled</span>
                                 {% endif %}
                             </td>
 
-                            <!-- ACTIONS -->
-                            <td>
+                            <td class="booking-actions">
 
                                 {% if booking.status == 'PENDING' %}
 
-                                    <div class="d-flex flex-wrap gap-2">
+                                <div class="d-flex flex-wrap gap-2">
 
-                                        <form method="POST"
-                                              action="{% url 'update_booking_status' booking.id %}">
-                                            {% csrf_token %}
+                                    <form method="POST"
+                                          action="{% url 'update_booking_status' booking.id %}"
+                                          class="ajax-booking-form">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                name="action"
+                                                value="approve"
+                                                class="btn btn-success btn-sm">
+                                            Approve
+                                        </button>
+                                    </form>
 
-                                            <button type="submit"
-                                                    name="action"
-                                                    value="approve"
-                                                    class="btn btn-success btn-sm">
-                                                Approve
-                                            </button>
-                                        </form>
+                                    <form method="POST"
+                                          action="{% url 'update_booking_status' booking.id %}"
+                                          class="ajax-booking-form">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                name="action"
+                                                value="reject"
+                                                class="btn btn-outline-danger btn-sm">
+                                            Reject
+                                        </button>
+                                    </form>
 
-                                        <form method="POST"
-                                              action="{% url 'update_booking_status' booking.id %}">
-                                            {% csrf_token %}
-
-                                            <button type="submit"
-                                                    name="action"
-                                                    value="reject"
-                                                    class="btn btn-outline-danger btn-sm">
-                                                Reject
-                                            </button>
-                                        </form>
-
-                                    </div>
+                                </div>
 
                                 {% elif booking.status == 'APPROVED' %}
 
-                                    <form method="POST"
-                                          action="{% url 'update_booking_status' booking.id %}">
-                                        {% csrf_token %}
-
-                                        <button type="submit"
-                                                name="action"
-                                                value="issue"
-                                                class="btn btn-primary btn-sm">
-                                            Issue {{ booking.quantity }} Unit(s)
-                                        </button>
-                                    </form>
+                                <form method="POST"
+                                      action="{% url 'update_booking_status' booking.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            name="action"
+                                            value="issue"
+                                            class="btn btn-primary btn-sm">
+                                        Issue {{ booking.quantity }} Unit(s)
+                                    </button>
+                                </form>
 
                                 {% elif booking.status == 'ISSUED' %}
 
-                                    <div class="mb-2">
-                                        <small class="text-muted">
-                                            Outstanding:
-                                            <strong>{{ booking.outstanding_quantity }}</strong>
-                                            unit(s)
-                                        </small>
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        Outstanding:
+                                        <strong>{{ booking.outstanding_quantity }}</strong>
+                                        unit(s)
+                                    </small>
 
-                                        <div class="progress mt-2" style="height: 6px;">
-                                            <div class="progress-bar bg-success"
-                                                 role="progressbar"
-                                                 style="width: {% widthratio booking.returned_quantity booking.quantity 100 %}%;">
-                                            </div>
+                                    <div class="progress mt-2" style="height: 6px;">
+                                        <div class="progress-bar bg-success"
+                                             role="progressbar"
+                                             style="width: {% widthratio booking.returned_quantity booking.quantity 100 %}%;">
                                         </div>
-
-                                        <small class="text-muted">
-                                            {{ booking.returned_quantity }} of {{ booking.quantity }} returned
-                                        </small>
                                     </div>
 
-                                    <form method="POST"
-                                          action="{% url 'update_booking_status' booking.id %}">
-                                        {% csrf_token %}
+                                    <small class="text-muted">
+                                        {{ booking.returned_quantity }} of {{ booking.quantity }} returned
+                                    </small>
+                                </div>
 
-                                        <div class="mb-2">
-                                            <label class="form-label small fw-semibold">
-                                                Quantity Being Returned
-                                            </label>
+                                <form method="POST"
+                                      action="{% url 'update_booking_status' booking.id %}">
+                                    {% csrf_token %}
 
-                                            <input type="number"
-                                                   name="return_quantity"
-                                                   class="form-control form-control-sm"
-                                                   min="1"
-                                                   max="{{ booking.outstanding_quantity }}"
-                                                   value="{{ booking.outstanding_quantity }}"
-                                                   required>
-                                        </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-semibold">
+                                            Quantity Being Returned
+                                        </label>
+                                        <input type="number"
+                                               name="return_quantity"
+                                               class="form-control form-control-sm"
+                                               min="1"
+                                               max="{{ booking.outstanding_quantity }}"
+                                               value="{{ booking.outstanding_quantity }}"
+                                               required>
+                                    </div>
 
-                                        <div class="mb-2">
-                                            <label class="form-label small fw-semibold">
-                                                Damaged Units
-                                            </label>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-semibold">
+                                            Damaged Units
+                                        </label>
+                                        <input type="number"
+                                               name="damaged_quantity"
+                                               class="form-control form-control-sm"
+                                               min="0"
+                                               max="{{ booking.outstanding_quantity }}"
+                                               value="0"
+                                               required>
+                                    </div>
 
-                                            <input type="number"
-                                                   name="damaged_quantity"
-                                                   class="form-control form-control-sm"
-                                                   min="0"
-                                                   max="{{ booking.outstanding_quantity }}"
-                                                   value="0"
-                                                   required>
-                                        </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-semibold">
+                                            Return Condition
+                                        </label>
+                                        <select name="return_condition"
+                                                class="form-select form-select-sm"
+                                                required>
+                                            <option value="">Select condition</option>
+                                            <option value="EXCELLENT">Excellent</option>
+                                            <option value="GOOD">Good</option>
+                                            <option value="FAIR">Fair</option>
+                                            <option value="DAMAGED">Damaged</option>
+                                        </select>
+                                    </div>
 
-                                        <div class="mb-2">
-                                            <label class="form-label small fw-semibold">
-                                                Return Condition
-                                            </label>
-
-                                            <select name="return_condition"
-                                                    class="form-select form-select-sm"
-                                                    required>
-                                                <option value="">Select condition</option>
-                                                <option value="EXCELLENT">Excellent</option>
-                                                <option value="GOOD">Good</option>
-                                                <option value="FAIR">Fair</option>
-                                                <option value="DAMAGED">Damaged</option>
-                                            </select>
-                                        </div>
-
-                                        <button type="submit"
-                                                name="action"
-                                                value="return"
-                                                class="btn btn-success btn-sm w-100">
-                                            Record Return
-                                        </button>
-
-                                    </form>
+                                    <button type="submit"
+                                            name="action"
+                                            value="return"
+                                            class="btn btn-success btn-sm w-100">
+                                        Record Return
+                                    </button>
+                                </form>
 
                                 {% elif booking.status == 'RETURNED' %}
 
-                                    <small class="text-success fw-semibold">
-                                        <i class="bi bi-check-circle"></i>
-                                        Return completed
-                                    </small>
+                                <small class="text-success fw-semibold">
+                                    <i class="bi bi-check-circle"></i>
+                                    Return completed
+                                </small>
 
-                                    <div class="small text-muted mt-1">
-                                        Condition: {{ booking.return_condition }}
-                                    </div>
+                                <div class="small text-muted mt-1">
+                                    Condition: {{ booking.return_condition }}
+                                </div>
 
-                                    {% if booking.damaged_quantity > 0 %}
-                                        <div class="small text-danger">
-                                            {{ booking.damaged_quantity }} damaged unit(s)
-                                        </div>
-                                    {% endif %}
+                                {% if booking.damaged_quantity > 0 %}
+                                <div class="small text-danger">
+                                    {{ booking.damaged_quantity }} damaged unit(s)
+                                </div>
+                                {% endif %}
 
                                 {% elif booking.status == 'REJECTED' %}
 
-                                    <small class="text-muted">
-                                        Request rejected
-                                    </small>
+                                <small class="text-muted">Request rejected</small>
 
                                 {% elif booking.status == 'CANCELLED' %}
 
-                                    <small class="text-muted">
-                                        Request cancelled
-                                    </small>
+                                <small class="text-muted">Request cancelled</small>
 
                                 {% endif %}
 
@@ -312,4 +293,101 @@
     </div>
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const messageBox = document.getElementById('ajaxMessage');
+
+    document.querySelectorAll('.ajax-booking-form').forEach(function (form) {
+
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const button = event.submitter;
+            const action = button.value;
+            const row = form.closest('tr');
+
+            button.disabled = true;
+
+            const formData = new FormData(form);
+            formData.set('action', action);
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const data = await response.json();
+
+                messageBox.classList.remove(
+                    'd-none',
+                    'alert-success',
+                    'alert-danger'
+                );
+
+                if (!response.ok || !data.success) {
+                    messageBox.classList.add('alert-danger');
+                    messageBox.textContent =
+                        data.message || 'Unable to update booking.';
+                    button.disabled = false;
+                    return;
+                }
+
+                messageBox.classList.add('alert-success');
+                messageBox.textContent = data.message;
+
+                const statusCell = row.querySelector('.booking-status');
+                const actionsCell = row.querySelector('.booking-actions');
+
+                statusCell.replaceChildren();
+
+                const badge = document.createElement('span');
+
+                if (data.status === 'APPROVED') {
+                    badge.className = 'badge bg-primary';
+                    badge.textContent = 'Approved';
+
+                    actionsCell.replaceChildren();
+
+                    const note = document.createElement('small');
+                    note.className = 'text-success';
+                    note.textContent =
+                        'Approved. Refresh when ready to issue the resource.';
+
+                    actionsCell.appendChild(note);
+
+                } else {
+                    badge.className = 'badge bg-danger';
+                    badge.textContent = 'Rejected';
+
+                    actionsCell.replaceChildren();
+
+                    const note = document.createElement('small');
+                    note.className = 'text-muted';
+                    note.textContent = 'Request rejected';
+
+                    actionsCell.appendChild(note);
+                }
+
+                statusCell.appendChild(badge);
+
+            } catch (error) {
+                messageBox.classList.remove('d-none');
+                messageBox.classList.add('alert-danger');
+                messageBox.textContent =
+                    'Something went wrong. Please try again.';
+                button.disabled = false;
+            }
+        });
+
+    });
+
+});
+</script>
+
 {% endblock %}
